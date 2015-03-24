@@ -1,0 +1,15 @@
+*.iml
+.idea/
+out/
+.idea_modules/
+target/
+lib_managed/
+src_managed/
+project/boot/
+.history
+.cache
+*.class
+*.log
+.lib/
+dist/*
+project/plugins/project/
