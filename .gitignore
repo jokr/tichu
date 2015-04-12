@@ -13,3 +13,4 @@ project/boot/
 .lib/
 dist/*
 project/plugins/project/
+.DS_Store
