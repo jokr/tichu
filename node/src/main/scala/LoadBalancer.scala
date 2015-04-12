@@ -1,23 +1,22 @@
 
 import akka.actor._
+import akka.event.Logging
 import com.typesafe.config.ConfigFactory
 
 object LoadBalancer extends App {
-
-  val system = ActorSystem("RemoteSystem", ConfigFactory.load("loadbalance"))
-  // create an actor from actorSystem
+  val system = ActorSystem("RemoteSystem", ConfigFactory.load("loadbalancer"))
+  val log = Logging.getLogger(system, this)
   system.actorOf(Props[LoadBalancer], name="LoadBalancer")
-
-  println("Start LoadBalancer ......")
+  log.info("Started load balancer")
 }
 
-class LoadBalancer extends Actor {
+class LoadBalancer extends Actor with ActorLogging {
   var SN_list = collection.mutable.Map[NodeInfo, Integer]()
   // val SN_info = collection.mutable.ListBuffer.empty[NodeInfo]
   var messageBuf = scala.collection.mutable.ListBuffer.empty[Msg]
 
   def receive = {
-    case Msg(src_ip, src_port, msg_type, msg_content) => {
+    case Msg(src_ip, src_port, msg_type, msg_content) =>
       // add the message to buffer, then print the buffer
       messageBuf += new Msg(src_ip, src_port, msg_type, msg_content)
       println("Current message buffer is: " + messageBuf.toString())
@@ -35,6 +34,5 @@ class LoadBalancer extends Actor {
       } else { // unknown message
         sender ! new Msg("", "", "ACK", "UNKNOWN")
       }
-    }
   }
 }

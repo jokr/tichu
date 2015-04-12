@@ -6,14 +6,13 @@ class ConsoleActor extends Actor {
 
   def receive = {
     case message: ConsoleSystemMessage => message match {
-      case EnableConsole() => {
+      case EnableConsole() =>
         log.debug("EnableConsole received")
-        acceptUserInput
-      }
+        acceptUserInput()
     }
   }
 
-  def acceptUserInput = {
+  def acceptUserInput(): Unit = {
     println(
       """Please type something for your buddies and press enter!
 Or, you can type:
@@ -21,7 +20,7 @@ Or, you can type:
 2 => Play, to ask SuperNode to match other players
 3 => Start, once Matched, you can start Game Immediately
 or done, to exit this program!""")
-    for (ln <- (io.Source.stdin.getLines.takeWhile(!_.equals("Exit")))) {
+    for (ln <- io.Source.stdin.getLines().takeWhile(!_.equals("Exit"))) {
       log.debug("Line = {}", ln)
       context.parent ! MessageFromConsole(ln)
     }

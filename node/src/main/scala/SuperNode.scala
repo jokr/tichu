@@ -1,17 +1,15 @@
-import akka.actor.{Props, Actor, ActorSystem}
+import akka.actor.{ActorLogging, Actor, ActorSystem, Props}
+import akka.event.Logging
 import com.typesafe.config.ConfigFactory
 
 object SuperNode extends App {
-
-    val system = ActorSystem("RemoteSystem", ConfigFactory.load("supernode"))
-
-    val SuperNode = system.actorOf(Props[SuperNode], name="SuperNode")
-    println("Started SuperNode - waiting for ON messages")
-
+  val system = ActorSystem("RemoteSystem", ConfigFactory.load("supernode"))
+  val log = Logging.getLogger(system, this)
+  val SuperNode = system.actorOf(Props[SuperNode], name = "SuperNode")
+  log.info("Started SuperNode - waiting for ON messages")
 }
 
-
-class SuperNode extends Actor {
+class SuperNode extends Actor with ActorLogging {
   var STATE = "INIT"
   // ON_list holds the subordinate ONs' information <ip, port, name>
   val ON_list = collection.mutable.Map[NodeInfo, Integer]()
@@ -23,6 +21,7 @@ class SuperNode extends Actor {
   // NEW_SN__specifies a registration
   val msg = new Msg(myIp, myPort, "NEW_SN", myName)
   // send a message to the load balancer to register myself
+  // TODO rethink the idea of a load balancer
   sendMessage("127.0.0.1", "2552", "LoadBalancer", msg)
 
 
@@ -38,12 +37,13 @@ class SuperNode extends Actor {
   }
 
   def receive = {
-
     case Msg(ip_val, port_val, msg_type, msg_content) => {
-      if (msg_content == "SUCCREGR") { // success registration from load balancer
+      if (msg_content == "SUCCREGR") {
+        // success registration from load balancer
         println("I am registered at the load balancer")
         STATE = "WORKING" // change the state to "working"
-      } else if (msg_type == "NEW_ON" && STATE == "WORKING") { // a ON wants to register here
+      } else if (msg_type == "NEW_ON" && STATE == "WORKING") {
+        // a ON wants to register here
         println("New ON wants to register here")
         val onInfo = new NodeInfo(ip_val, port_val, msg_content)
         // register into my database
