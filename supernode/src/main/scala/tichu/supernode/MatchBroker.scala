@@ -13,13 +13,13 @@ object MatchBroker {
 
 }
 
-class MatchBroker extends Actor with ActorLogging {
+class MatchBroker(numberOfPlayers: Integer = 4) extends Actor with ActorLogging {
   val players = mutable.MutableList[NodeRegistry]()
 
   log.debug("Started new broker.")
 
   def sendInvites(): Unit = {
-    assert(players.size == 1, "Tried to send invites without knowing four players.")
+    assert(players.size == numberOfPlayers, "Tried to send invites without knowing four players.")
     val names = players.map(_.name)
     players.foreach(_.matching(names))
   }
@@ -29,7 +29,7 @@ class MatchBroker extends Actor with ActorLogging {
   def searching: Receive = {
     case AddPlayer(node) =>
       players += node
-      if (players.size == 1) {
+      if (players.size == numberOfPlayers) {
         context.become(matching)
         sendInvites()
       }
