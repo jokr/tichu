@@ -3,8 +3,11 @@ import Keys._
 
 object Tichu extends Build {
     lazy val root = Project(id = "tichu",
-                            base = file(".")) aggregate(node)
+                            base = file(".")) aggregate(supernode, ordinarynode)
 
-    lazy val node = Project(id = "tichu-node",
-                           base = file("node"))
+    lazy val supernode = Project(id = "tichu-supernode",
+                           base = file("supernode"))
+
+    lazy val ordinarynode = Project(id = "tichu-ordinary-node",
+                       base = file("ordinarynode"))
 }
