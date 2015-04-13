@@ -1,13 +1,31 @@
+import sbt.Keys._
 import sbt._
-import Keys._
 
-object Tichu extends Build {
-    lazy val root = Project(id = "tichu",
-                            base = file(".")) aggregate(supernode, ordinarynode)
+object Build extends Build {
+  lazy val commonSettings = Seq(
+    organization := "edu.cmu.ece",
+    version := "0.0.alpha1",
+    scalaVersion := "2.11.6"
+  )
 
-    lazy val supernode = Project(id = "tichu-supernode",
-                           base = file("supernode"))
+  val akkaDependencies = Seq(
+    "com.typesafe.akka" %% "akka-actor" % "2.4-SNAPSHOT",
+    "com.typesafe.akka" %% "akka-remote" % "2.4-SNAPSHOT"
+  )
 
-    lazy val ordinarynode = Project(id = "tichu-ordinary-node",
-                       base = file("ordinarynode"))
+  lazy val messages = (project in file("messages")).settings(commonSettings: _*).settings(
+    name := "Tichu Messages"
+  )
+
+  lazy val supernode = (project in file("supernode")).settings(commonSettings: _*).settings(
+    name := "Tichu Super Node",
+    libraryDependencies ++= akkaDependencies,
+    resolvers += "Akka Snapshot Repository" at "http://repo.akka.io/snapshots/"
+  ).dependsOn(messages)
+
+  lazy val ordinarynode = (project in file("ordinarynode")).settings(commonSettings: _*).settings(
+    name := "Tichu Ordinary Node",
+    libraryDependencies ++= akkaDependencies,
+    resolvers += "Akka Snapshot Repository" at "http://repo.akka.io/snapshots/"
+  ).dependsOn(messages)
 }

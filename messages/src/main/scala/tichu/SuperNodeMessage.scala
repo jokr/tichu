@@ -1,4 +1,4 @@
-package tichu.common
+package tichu
 
 object SuperNodeMessage {
 

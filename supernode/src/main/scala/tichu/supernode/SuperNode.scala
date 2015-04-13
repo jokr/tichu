@@ -4,7 +4,7 @@ import java.nio.file.{Files, Paths}
 
 import akka.actor._
 import com.typesafe.config.ConfigFactory
-import tichu.common.SuperNodeMessage.Join
+import tichu.SuperNodeMessage.Join
 
 import scala.collection.mutable
 import scala.io.Source

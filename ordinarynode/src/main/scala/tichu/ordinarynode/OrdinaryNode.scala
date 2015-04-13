@@ -1,8 +1,7 @@
 package tichu.ordinarynode
 
 import akka.actor.{Actor, ActorLogging, ActorSelection}
-import tichu.common.SuperNodeMessage
-import tichu.common.SuperNodeMessage.Join
+import tichu.SuperNodeMessage.Join
 import tichu.ordinarynode.OrdinaryNodeMessage.{Register, Shutdown}
 
 object OrdinaryNodeMessage {
