@@ -38,6 +38,7 @@ class SuperNode(hostname: String, port: String) extends Actor with ActorLogging 
   def connectToPeer(host: String): Unit = {
     val remote = context.actorSelection(s"akka.tcp://RemoteSystem@$host:2553/user/SuperNode")
     remote ! Identify(s"$host")
+    remote ! ActorIdentity(s"$hostname:$port", Option(self))
   }
 
   def addPeer(host: String, actor: ActorRef): Unit = {
