@@ -4,7 +4,7 @@ import java.nio.file.{Files, Paths}
 
 import akka.actor._
 import com.typesafe.config.ConfigFactory
-import tichu.ClientMessage.Searching
+import tichu.ClientMessage.SearchingMatch
 import tichu.SuperNodeMessage.Join
 import tichu.supernode.MatchBroker.AddPlayer
 
@@ -54,7 +54,7 @@ class SuperNode(hostname: String, port: String) extends Actor with ActorLogging 
     case Join(name) => addNode(name, sender())
     case ActorIdentity(host: String, Some(actorRef)) => addPeer(host, actorRef)
     case ActorIdentity(host, None) => log.error("Could not connect to {}", host)
-    case Searching() =>
+    case SearchingMatch() =>
       val node = nodes.get(sender().path).get
       node.searching()
       if(broker.isEmpty) {

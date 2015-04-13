@@ -1,10 +1,10 @@
 package tichu.ordinarynode
 
 import akka.actor._
-import tichu.ClientMessage.Searching
-import tichu.ordinarynode.ClientMessage.{StartSearching, Register, Shutdown}
+import tichu.ClientMessage.SearchingMatch
+import tichu.ordinarynode.InternalMessage.{StartSearching, Register, Shutdown}
 
-object ClientMessage {
+object InternalMessage {
   case class Shutdown(reason: String)
   case class Register(hostname: String)
   case class StartSearching()
@@ -26,6 +26,6 @@ class OrdinaryNode(name: String) extends Actor with ActorLogging {
   }
 
   def idle(superNode: ActorRef): Receive = {
-    case StartSearching() => superNode ! Searching()
+    case StartSearching() => superNode ! SearchingMatch()
   }
 }

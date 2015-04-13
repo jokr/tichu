@@ -1,6 +1,7 @@
 package tichu.ordinarynode
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Terminated}
+import tichu.ordinarynode.InternalMessage.Shutdown
 
 case object Prompt
 
@@ -23,11 +24,11 @@ class ConsoleActor(node: ActorRef) extends Actor with ActorLogging {
     command.trim() match {
       case "quit" =>
         context.unwatch(node)
-        node ! OrdinaryNodeMessage.Shutdown("User request")
+        node ! Shutdown("User request")
         terminated = true
         context.stop(self)
       case Help(commandName) => help(commandName)
-      case Register(hostname) => node ! OrdinaryNodeMessage.Register(hostname)
+      case Register(hostname) => node ! InternalMessage.Register(hostname)
       case _ => help(null)
     }
 
