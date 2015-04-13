@@ -1,7 +1,7 @@
 package tichu.ordinarynode
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Terminated}
-import tichu.ordinarynode.InternalMessage.Shutdown
+import tichu.ordinarynode.InternalMessage.{Register, StartSearching, Shutdown}
 
 case object Prompt
 
@@ -15,8 +15,8 @@ class ConsoleActor(node: ActorRef) extends Actor with ActorLogging {
 
   def prompt() = {
     print("tichu$ ")
-    val Help = "help ([A-Za-z0-9]*)".r
-    val Register = "register ([^\\s]*)".r
+    val HelpCmd = "help ([A-Za-z0-9]*)".r
+    val RegisterCmd = "register ([^\\s]*)".r
 
     var terminated = false
 
@@ -27,8 +27,9 @@ class ConsoleActor(node: ActorRef) extends Actor with ActorLogging {
         node ! Shutdown("User request")
         terminated = true
         context.stop(self)
-      case Help(commandName) => help(commandName)
-      case Register(hostname) => node ! InternalMessage.Register(hostname)
+      case "search" => node ! StartSearching()
+      case HelpCmd(commandName) => help(commandName)
+      case RegisterCmd(hostname) => node ! Register(hostname)
       case _ => help(null)
     }
 
@@ -42,6 +43,7 @@ class ConsoleActor(node: ActorRef) extends Actor with ActorLogging {
       println(
         """The following commands are available:
           |register <hostname>
+          |search
           |help <command name>
           |quit
         """.stripMargin)

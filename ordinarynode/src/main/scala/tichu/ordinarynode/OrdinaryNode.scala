@@ -2,6 +2,7 @@ package tichu.ordinarynode
 
 import akka.actor._
 import tichu.ClientMessage.SearchingMatch
+import tichu.SuperNodeMessage.Join
 import tichu.ordinarynode.InternalMessage.{StartSearching, Register, Shutdown}
 
 object InternalMessage {
@@ -21,11 +22,20 @@ class OrdinaryNode(name: String) extends Actor with ActorLogging {
   def connecting: Receive = {
     case Shutdown(reason) => context.stop(self)
     case Register(hostname) => register(hostname)
-    case ActorIdentity(host: String, Some(actorRef)) => context.become(idle(actorRef))
+    case ActorIdentity(host: String, Some(actorRef)) =>
+      context.become(idle(actorRef))
+      actorRef ! Join(name)
     case ActorIdentity(hostname, None) => log.error("Could not connect to {}", hostname)
   }
 
   def idle(superNode: ActorRef): Receive = {
-    case StartSearching() => superNode ! SearchingMatch()
+    case StartSearching() =>
+      superNode ! SearchingMatch()
+      context.become(searching(superNode))
+  }
+
+  def searching(superNode: ActorRef): Receive = {
+    // TODO
+    case _ => ???
   }
 }
