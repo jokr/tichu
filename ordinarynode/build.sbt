@@ -6,7 +6,7 @@ scalaVersion := "2.11.6"
 
 name := "Tichu Ordinary Node"
 
-libraryDependencies += "org.scalatest" % "scalatest_2.11" % "2.2.1" % "test"
+libraryDependencies += "edu.cmu.ece" % "tichu-common_2.11" % "0.0.alpha1"
 
 libraryDependencies += "com.typesafe.akka" %% "akka-actor" % "2.4-SNAPSHOT"
 
