@@ -14,7 +14,9 @@ object Build extends Build {
   )
 
   lazy val messages = (project in file("messages")).settings(commonSettings: _*).settings(
-    name := "Tichu Messages"
+    name := "Tichu Messages",
+    libraryDependencies ++= akkaDependencies,
+    resolvers += "Akka Snapshot Repository" at "http://repo.akka.io/snapshots/"
   )
 
   lazy val supernode = (project in file("supernode")).settings(commonSettings: _*).settings(

@@ -1,40 +1,51 @@
 package tichu.ordinarynode
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Terminated}
-import tichu.ordinarynode.InternalMessage.{Register, StartSearching, Shutdown}
-
-case object Prompt
+import tichu.ClientMessage.{Accept, SearchingMatch}
+import tichu.SuperNodeMessage.{Join, Invite}
+import tichu.ordinarynode.InternalMessage.{Subscribe, Prompt, Shutdown}
 
 class ConsoleActor(node: ActorRef) extends Actor with ActorLogging {
+  val input = io.Source.stdin.getLines()
+
   context.watch(node)
+
+  node ! Subscribe(self)
 
   def receive = {
     case Prompt => prompt()
     case Terminated => quit()
+    case Invite(players) => matchInvite(players)
   }
 
   def prompt() = {
     print("tichu$ ")
     val HelpCmd = "help ([A-Za-z0-9]*)".r
-    val RegisterCmd = "register ([^\\s]*)".r
+    val JoinCmd = "join ([^\\s]*)".r
 
-    var terminated = false
-
-    val command = io.Source.stdin.getLines().next()
+    val command = input.next()
     command.trim() match {
       case "quit" =>
         context.unwatch(node)
         node ! Shutdown("User request")
-        terminated = true
         context.stop(self)
-      case "search" => node ! StartSearching()
+      case "search" => node ! SearchingMatch()
       case HelpCmd(commandName) => help(commandName)
-      case RegisterCmd(hostname) => node ! Register(hostname)
+      case JoinCmd(hostname) => node ! Join(hostname)
       case _ => help(null)
     }
+  }
 
-    if (!terminated) {
-      self ! Prompt
+  def matchInvite(players: Seq[String]) = {
+    println()
+    println( "A match has been found with the following players: ")
+    players foreach println
+    print( "Do you accept? (Y/n): ")
+    val answer = input.next().trim().toLowerCase
+    if (answer.equals("n")) {
+      // TODO decline
+    } else {
+      node ! Accept()
     }
   }
 
@@ -42,7 +53,7 @@ class ConsoleActor(node: ActorRef) extends Actor with ActorLogging {
     if (command == null) {
       println(
         """The following commands are available:
-          |register <hostname>
+          |join <hostname>
           |search
           |help <command name>
           |quit
@@ -53,6 +64,8 @@ class ConsoleActor(node: ActorRef) extends Actor with ActorLogging {
         case _ => println( """Unknown command. Type 'help' for a list of commands.""")
       }
     }
+
+    self ! Prompt
   }
 
   def quit() = {

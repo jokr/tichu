@@ -1,5 +1,7 @@
 package tichu.ordinarynode
 
+import tichu.ordinarynode.InternalMessage.Prompt
+
 import scala.concurrent.duration.DurationInt
 
 import akka.actor.{ActorSystem, Props, ActorDSL}

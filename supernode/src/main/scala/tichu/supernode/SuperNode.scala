@@ -4,9 +4,9 @@ import java.nio.file.{Files, Paths}
 
 import akka.actor._
 import com.typesafe.config.ConfigFactory
-import tichu.ClientMessage.SearchingMatch
+import tichu.ClientMessage.{Accept, SearchingMatch}
 import tichu.SuperNodeMessage.Join
-import tichu.supernode.MatchBroker.AddPlayer
+import tichu.supernode.MatchBroker.{Accepted, AddPlayer}
 
 import scala.collection.mutable
 import scala.io.Source
@@ -22,7 +22,7 @@ object SuperNode extends App {
 }
 
 class SuperNode(hostname: String, port: String) extends Actor with ActorLogging {
-  var broker: Option[ActorRef] = None
+  var broker: ActorRef = context.actorOf(Props[MatchBroker])
   val nodes = mutable.Map[ActorPath, NodeRegistry]()
   val peers = mutable.Map[String, PeerRegistry]()
 
@@ -57,9 +57,9 @@ class SuperNode(hostname: String, port: String) extends Actor with ActorLogging 
     case SearchingMatch() =>
       val node = nodes.get(sender().path).get
       node.searching()
-      if(broker.isEmpty) {
-        broker = Option(context.actorOf(Props[MatchBroker]))
-      }
-      broker.get ! AddPlayer(node)
+      broker ! AddPlayer(node)
+    case Accept() =>
+      val node = nodes.get(sender().path).get
+      broker ! Accepted(node)
   }
 }
