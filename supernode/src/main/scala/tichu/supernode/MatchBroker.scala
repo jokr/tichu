@@ -13,7 +13,7 @@ object MatchBroker {
 
 }
 
-class MatchBroker(numberOfPlayers: Integer = 4) extends Actor with ActorLogging {
+class MatchBroker(numberOfPlayers: Integer) extends Actor with ActorLogging {
   val players = mutable.MutableList[NodeRegistry]()
 
   log.debug("Started new broker.")

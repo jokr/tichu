@@ -22,7 +22,7 @@ object SuperNode extends App {
 }
 
 class SuperNode(hostname: String, port: String) extends Actor with ActorLogging {
-  var broker: ActorRef = context.actorOf(Props[MatchBroker])
+  var broker: ActorRef = context.actorOf(Props(classOf[MatchBroker], 4))
   val nodes = mutable.Map[ActorPath, NodeRegistry]()
   val peers = mutable.Map[String, PeerRegistry]()
 
