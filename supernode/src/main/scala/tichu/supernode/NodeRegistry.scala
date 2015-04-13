@@ -2,12 +2,16 @@ package tichu.supernode
 
 import akka.actor.ActorRef
 
-object State {
-  case object idle
-  case object searching
-  case object matched
-}
+sealed trait State
+
+case object Idle extends State
+case object Searching extends State
+case object Matched extends State
 
 class NodeRegistry(name: String, actor: ActorRef) {
-  var state = State.idle
+  var state: State = Idle
+
+  def searching(): Unit = {
+    state = Searching
+  }
 }

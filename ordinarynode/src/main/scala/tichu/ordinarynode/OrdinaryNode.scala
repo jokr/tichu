@@ -1,26 +1,31 @@
 package tichu.ordinarynode
 
-import akka.actor.{Actor, ActorLogging, ActorSelection}
-import tichu.SuperNodeMessage.Join
-import tichu.ordinarynode.OrdinaryNodeMessage.{Register, Shutdown}
+import akka.actor._
+import tichu.ClientMessage.Searching
+import tichu.ordinarynode.ClientMessage.{StartSearching, Register, Shutdown}
 
-object OrdinaryNodeMessage {
-  case class Shutdown(msg: String)
+object ClientMessage {
+  case class Shutdown(reason: String)
   case class Register(hostname: String)
+  case class StartSearching()
 }
 
 class OrdinaryNode(name: String) extends Actor with ActorLogging {
-  var superNode: ActorSelection = null
-
   def register(hostname: String, port: String = "2553"): Unit = {
-    superNode = context.actorSelection(s"akka.tcp://RemoteSystem@$hostname:$port/user/SuperNode")
-    superNode ! Join(name)
+    val remote = context.actorSelection(s"akka.tcp://RemoteSystem@$hostname:$port/user/SuperNode")
+    remote ! Identify(hostname)
   }
 
-  def receive = {
-    case Shutdown(reason) =>
-      log.info(s"Received shutdown message: $reason")
-      context.stop(self)
+  def receive = connecting
+
+  def connecting: Receive = {
+    case Shutdown(reason) => context.stop(self)
     case Register(hostname) => register(hostname)
+    case ActorIdentity(host: String, Some(actorRef)) => context.become(idle(actorRef))
+    case ActorIdentity(hostname, None) => log.error("Could not connect to {}", hostname)
+  }
+
+  def idle(superNode: ActorRef): Receive = {
+    case StartSearching() => superNode ! Searching()
   }
 }

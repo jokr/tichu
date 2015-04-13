@@ -4,7 +4,9 @@ import java.nio.file.{Files, Paths}
 
 import akka.actor._
 import com.typesafe.config.ConfigFactory
+import tichu.ClientMessage.Searching
 import tichu.SuperNodeMessage.Join
+import tichu.supernode.MatchBroker.AddPlayer
 
 import scala.collection.mutable
 import scala.io.Source
@@ -20,7 +22,8 @@ object SuperNode extends App {
 }
 
 class SuperNode(hostname: String, port: String) extends Actor with ActorLogging {
-  val nodes = mutable.Map[String, NodeRegistry]()
+  var broker: Option[ActorRef] = None
+  val nodes = mutable.Map[ActorPath, NodeRegistry]()
   val peers = mutable.Map[String, PeerRegistry]()
 
   override def preStart(): Unit = {
@@ -31,7 +34,7 @@ class SuperNode(hostname: String, port: String) extends Actor with ActorLogging 
 
   def addNode(name: String, actor: ActorRef): Unit = {
     val node = new NodeRegistry(name, actor)
-    nodes += (name -> node)
+    nodes += (actor.path -> node)
     log.info(s"Registered node $name.")
   }
 
@@ -51,5 +54,12 @@ class SuperNode(hostname: String, port: String) extends Actor with ActorLogging 
     case Join(name) => addNode(name, sender())
     case ActorIdentity(host: String, Some(actorRef)) => addPeer(host, actorRef)
     case ActorIdentity(host, None) => log.error("Could not connect to {}", host)
+    case Searching() =>
+      val node = nodes.get(sender().path).get
+      node.searching()
+      if(broker.isEmpty) {
+        broker = Option(context.actorOf(Props[MatchBroker]))
+      }
+      broker.get ! AddPlayer(node)
   }
 }
