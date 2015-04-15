@@ -72,7 +72,10 @@ class SuperNode(hostname: String, port: String) extends Actor with ActorLogging 
     case RequestPlayers() => requestPlayers()
     case PlayerRequest(origin, seqNum, players) =>
       if (!answeredRequests.contains((origin, seqNum))) {
+        log.debug("Dispatch player request to our broker.")
         broker ! PlayerRequest
+      } else {
+        log.debug("Received a player request that we already answered.")
       }
   }
 }
