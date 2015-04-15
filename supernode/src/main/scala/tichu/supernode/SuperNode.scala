@@ -55,7 +55,7 @@ class SuperNode(hostname: String, port: String) extends Actor with ActorLogging 
 
   def requestPlayers(): Unit = {
     requestSeqNum += 1
-    peers.values.foreach(_.actor ! PlayerRequest(self.path, requestSeqNum, Seq()))
+    peers.values.foreach(_.actor ! PlayerRequest(self, requestSeqNum, Seq()))
   }
 
   def receive = {
@@ -71,7 +71,7 @@ class SuperNode(hostname: String, port: String) extends Actor with ActorLogging 
       broker ! Accepted(node)
     case RequestPlayers() => requestPlayers()
     case PlayerRequest(origin, seqNum, players) =>
-      if (!answeredRequests.contains((origin, seqNum))) {
+      if (!answeredRequests.contains((origin.path, seqNum))) {
         log.debug("Dispatch player request to our broker.")
         broker forward PlayerRequest(origin, seqNum, players)
       } else {

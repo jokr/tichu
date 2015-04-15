@@ -47,7 +47,7 @@ class MatchBroker(numberOfPlayers: Integer) extends Actor with ActorLogging {
       log.debug("Received request for players.")
       if (searchingPlayers.size > 0) {
         log.debug("Respond with {} players.", searchingPlayers.size)
-        context.actorSelection(origin) ! AvailablePlayers((origin, seqNum), searchingPlayers.map(_.actorRef))
+        origin ! AvailablePlayers(searchingPlayers.map(_.actorRef))
       }
   }
 

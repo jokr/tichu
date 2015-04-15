@@ -1,6 +1,6 @@
 package tichu
 
-import akka.actor.{ActorPath, ActorRef}
+import akka.actor.ActorRef
 
 object SuperNodeMessage {
 
@@ -10,8 +10,8 @@ object SuperNodeMessage {
 
   final case class Ready(remotes: Seq[ActorRef])
 
-  final case class PlayerRequest(origin: ActorPath, seqNum: Int, players: Seq[ActorRef])
+  final case class PlayerRequest(origin: ActorRef, seqNum: Int, players: Seq[ActorRef])
 
-  final case class AvailablePlayers(request: (ActorPath, Int), players: Seq[ActorRef])
+  final case class AvailablePlayers(players: Seq[ActorRef])
 
 }
