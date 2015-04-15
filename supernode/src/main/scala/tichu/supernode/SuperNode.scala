@@ -31,7 +31,7 @@ class SuperNode(hostname: String, port: String) extends Actor with ActorLogging 
 
   override def preStart(): Unit = {
     if (Files.exists(Paths.get("./remotes"))) {
-      Source.fromFile("./remotes").getLines().foreach(connectToPeer)
+      Source.fromFile("./remotes").getLines().filter(!_.equals(hostname)).foreach(connectToPeer)
     }
   }
 
