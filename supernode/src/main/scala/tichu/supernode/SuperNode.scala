@@ -73,7 +73,7 @@ class SuperNode(hostname: String, port: String) extends Actor with ActorLogging 
     case PlayerRequest(origin, seqNum, players) =>
       if (!answeredRequests.contains((origin, seqNum))) {
         log.debug("Dispatch player request to our broker.")
-        broker ! PlayerRequest
+        broker forward PlayerRequest(origin, seqNum, players)
       } else {
         log.debug("Received a player request that we already answered.")
       }
