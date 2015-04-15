@@ -5,7 +5,7 @@ import java.nio.file.{Files, Paths}
 import akka.actor._
 import com.typesafe.config.ConfigFactory
 import tichu.ClientMessage.{Accept, SearchingMatch}
-import tichu.SuperNodeMessage.{Join, PlayerRequest}
+import tichu.SuperNodeMessage.{AvailablePlayers, Join, PlayerRequest}
 import tichu.supernode.MatchBroker.{Accepted, AddPlayer, RequestPlayers}
 
 import scala.collection.mutable
@@ -73,9 +73,11 @@ class SuperNode(hostname: String, port: String) extends Actor with ActorLogging 
     case PlayerRequest(origin, seqNum, players) =>
       if (!answeredRequests.contains((origin.path, seqNum))) {
         log.debug("Dispatch player request to our broker.")
+        answeredRequests.add((origin.path, seqNum))
         broker forward PlayerRequest(origin, seqNum, players)
       } else {
         log.debug("Received a player request that we already answered.")
       }
+    case AvailablePlayers(players) => broker forward AvailablePlayers(players)
   }
 }
