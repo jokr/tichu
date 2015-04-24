@@ -8,14 +8,14 @@ import akka.actor.{ActorSystem, Props, ActorDSL}
 import com.typesafe.config.ConfigFactory
 
 object ConsoleClient extends App {
-  val config = ConfigFactory.load("ordinarynode")
+  val config = ConfigFactory.load()
   implicit val system = ActorSystem("RemoteSystem", config)
 
   try run()
   finally system.terminate()
 
   def run(): Unit = {
-    val node = system.actorOf(Props(classOf[OrdinaryNode], config.getString("tichu.name")), "ordinaryNode")
+    val node = system.actorOf(Props(classOf[OrdinaryNode]), "ordinaryNode")
     val console = system.actorOf(Props(classOf[ConsoleActor], node), "console")
     console ! Prompt
 

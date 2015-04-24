@@ -3,7 +3,7 @@ package tichu.ordinarynode
 import akka.actor.{Actor, ActorLogging, ActorRef, Terminated}
 import tichu.ClientMessage.{Accept, SearchingMatch}
 import tichu.SuperNodeMessage.{Join, Invite}
-import tichu.ordinarynode.InternalMessage.{Subscribe, Prompt, Shutdown}
+import tichu.ordinarynode.InternalMessage.{UserName, Subscribe, Prompt, Shutdown}
 
 class ConsoleActor(node: ActorRef) extends Actor with ActorLogging {
   val input = io.Source.stdin.getLines()
@@ -15,13 +15,14 @@ class ConsoleActor(node: ActorRef) extends Actor with ActorLogging {
   def receive = {
     case Prompt => prompt()
     case Terminated => quit()
-    case Invite(players) => matchInvite(players)
+    case Invite() => matchInvite()
   }
 
   def prompt() = {
     print("tichu$ ")
     val HelpCmd = "help ([A-Za-z0-9]*)".r
     val JoinCmd = "join ([^\\s]*)".r
+    val UserNameCmd = "name ([A-Za-z0-9]+)".r
 
     val command = input.next()
     command.trim() match {
@@ -32,14 +33,14 @@ class ConsoleActor(node: ActorRef) extends Actor with ActorLogging {
       case "search" => node ! SearchingMatch()
       case HelpCmd(commandName) => help(commandName)
       case JoinCmd(hostname) => node ! Join(hostname)
+      case UserNameCmd(userName) => node ! UserName(userName)
       case _ => help(null)
     }
   }
 
-  def matchInvite(players: Seq[String]) = {
+  def matchInvite() = {
     println()
-    println( "A match has been found with the following players: ")
-    players foreach println
+    println( "A match has been found.")
     print( "Do you accept? (Y/n): ")
     val answer = input.next().trim().toLowerCase
     if (answer.equals("n")) {
@@ -53,6 +54,7 @@ class ConsoleActor(node: ActorRef) extends Actor with ActorLogging {
     if (command == null) {
       println(
         """The following commands are available:
+          |name <user name>
           |join <hostname>
           |search
           |help <command name>
