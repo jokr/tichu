@@ -1,7 +1,7 @@
-package tichu.supernode
+package tichu
 
 import akka.actor.ActorRef
-import tichu.SuperNodeMessage.{Ready, Invite}
+import tichu.SuperNodeMessage.{Invite, Ready}
 
 sealed trait State
 
@@ -9,7 +9,9 @@ case object Idle extends State
 case object Searching extends State
 case object Matched extends State
 
-class NodeRegistry(val name: String, val actorRef: ActorRef) {
+class Player(val name: String, superNode: ActorRef) extends Serializable {
+  def isSearching: Boolean = state.equals(Searching)
+
   var state: State = Idle
   var acceptedInvite = false
 
@@ -17,10 +19,10 @@ class NodeRegistry(val name: String, val actorRef: ActorRef) {
     state = Searching
   }
 
-  def matching(players: Seq[String]): Unit = {
+  def matching(): Unit = {
     assert(state.equals(Searching), "Must be in searching state to be matched.")
     state = Matched
-    actorRef ! Invite(players)
+    superNode ! Invite(name)
   }
 
   def accepted(): Unit = {
@@ -28,9 +30,9 @@ class NodeRegistry(val name: String, val actorRef: ActorRef) {
     acceptedInvite = true
   }
 
-  def ready(refs: List[ActorRef]): Unit = {
+  def ready(refs: Seq[Player]): Unit = {
     assert(state.equals(Matched) && acceptedInvite, "Cannot be ready for match if not in matched state and accepted invite.")
-    actorRef ! Ready(refs)
+    superNode ! Ready(name, refs)
   }
 
   override def toString = name
