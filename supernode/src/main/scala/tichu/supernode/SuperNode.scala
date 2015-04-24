@@ -7,18 +7,23 @@ import com.typesafe.config.ConfigFactory
 import tichu.ClientMessage.{Accept, SearchingMatch}
 import tichu.SuperNodeMessage.{Join, PlayerRequest}
 import tichu.supernode.MatchBroker.{Accepted, AddPlayer, RequestPlayers}
+import tichu.LoadBalancerMessage.{Register,ReplyAllSN}
 
 import scala.collection.mutable
 import scala.io.Source
 
 object SuperNode extends App {
   val config = ConfigFactory.load()
+
   val system = ActorSystem("RemoteSystem", config)
   val superNode = system.actorOf(Props(
     classOf[SuperNode],
     config.getString("akka.remote.netty.tcp.hostname"),
     config.getString("akka.remote.netty.tcp.port")),
     name = "SuperNode")
+
+  /* When SuperNode Initial, it will automatically register to loadbalancer */
+  
 }
 
 class SuperNode(hostname: String, port: String) extends Actor with ActorLogging {
@@ -29,11 +34,17 @@ class SuperNode(hostname: String, port: String) extends Actor with ActorLogging 
   private var requestSeqNum = 0
   private val answeredRequests = mutable.Set[(ActorPath, Int)]()
 
+  val remoteLN = context.actorSelection(s"akka.tcp://RemoteSystem@127.0.0.1:2663/user/LoadBalancer")
+  remoteLN ! Register(hostname)
+
+  
   override def preStart(): Unit = {
     if (Files.exists(Paths.get("./remotes"))) {
       Source.fromFile("./remotes").getLines().filter(!_.equals(hostname)).foreach(connectToPeer)
     }
   }
+
+
 
   def addNode(name: String, actor: ActorRef): Unit = {
     val node = new NodeRegistry(name, actor)
@@ -58,7 +69,10 @@ class SuperNode(hostname: String, port: String) extends Actor with ActorLogging 
     peers.values.foreach(_.actor ! PlayerRequest(self.path, requestSeqNum, Seq()))
   }
 
+
   def receive = {
+    case ReplyAllSN(lists) =>   /* LoadBalacer reply all supernodes to each SN, after register on LB */
+      log.info(s"Lists: {}", lists)
     case Join(name) => addNode(name, sender())
     case ActorIdentity(host: String, Some(actorRef)) => addPeer(host, actorRef)
     case ActorIdentity(host, None) => log.error("Could not connect to {}", host)

@@ -3,6 +3,7 @@ package tichu.ordinarynode
 import akka.actor.{Actor, ActorLogging, ActorRef, Terminated}
 import tichu.ClientMessage.{Accept, SearchingMatch}
 import tichu.SuperNodeMessage.{Join, Invite}
+import tichu.LoadBalancerMessage.{Init}
 import tichu.ordinarynode.InternalMessage.{Subscribe, Prompt, Shutdown}
 
 class ConsoleActor(node: ActorRef) extends Actor with ActorLogging {
@@ -21,7 +22,8 @@ class ConsoleActor(node: ActorRef) extends Actor with ActorLogging {
   def prompt() = {
     print("tichu$ ")
     val HelpCmd = "help ([A-Za-z0-9]*)".r
-    val JoinCmd = "join ([^\\s]*)".r
+    //val JoinCmd = "join ([^\\s]*)".r
+    val InitCmd = "init ([^\\s]*)".r
 
     val command = input.next()
     command.trim() match {
@@ -31,7 +33,8 @@ class ConsoleActor(node: ActorRef) extends Actor with ActorLogging {
         context.stop(self)
       case "search" => node ! SearchingMatch()
       case HelpCmd(commandName) => help(commandName)
-      case JoinCmd(hostname) => node ! Join(hostname)
+      //case JoinCmd(hostname) => node ! Join(hostname)
+      case InitCmd(hostname) => node ! Init(hostname)
       case _ => help(null)
     }
   }
@@ -53,7 +56,7 @@ class ConsoleActor(node: ActorRef) extends Actor with ActorLogging {
     if (command == null) {
       println(
         """The following commands are available:
-          |join <hostname>
+          |init <hostname>
           |search
           |help <command name>
           |quit

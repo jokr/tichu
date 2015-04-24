@@ -30,4 +30,10 @@ object Build extends Build {
     libraryDependencies ++= akkaDependencies,
     resolvers += "Akka Snapshot Repository" at "http://repo.akka.io/snapshots/"
   ).dependsOn(messages)
+
+  lazy val loadbalancer = (project in file("loadbalancer")).settings(commonSettings: _*).settings(
+    name := "Tichu BootServer Node",
+    libraryDependencies ++= akkaDependencies,
+    resolvers += "Akka Snapshot Repository" at "http://repo.akka.io/snapshots/"
+  ).dependsOn(messages)  
 }
