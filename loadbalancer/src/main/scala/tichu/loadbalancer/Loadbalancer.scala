@@ -39,12 +39,20 @@ class LoadBalancer(hostname: String, port: String) extends Actor with ActorLoggi
    *
    */
   def addSNNode(name: String, actor: ActorRef): Unit = {
-    
+    val answerList = lists.map(_.actorRef).toList
+
     val node = new SuperNodeRegistry(name, actor)
     nodes += (actor.path -> node)
     lists += node
     log.info(s"Registered SuperNode: $name.")
-    val answerList = lists.map(_.actorRef)
+    log.info(s"PATH: $actor.path")
+    val tmp = lists.get(0).get
+    val r = tmp.actorRef
+    log.info(s"REF: $r")
+    
+    
+    log.info("REF: {}", answerList)
+
     actor ! ReplyAllSN(answerList)
   }
 
@@ -60,6 +68,8 @@ class LoadBalancer(hostname: String, port: String) extends Actor with ActorLoggi
     randomIndex = randomIndex % lists.length
     val sn = lists.get(randomIndex).get
     randomIndex = randomIndex + 1
+    val t = sn.actorRef
+    log.info(s"ALLOCATE: $t")
     actor ! ReplySNRef(sn.actorRef, sn.name)
   }
 

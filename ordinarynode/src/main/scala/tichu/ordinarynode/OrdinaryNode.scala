@@ -61,7 +61,10 @@ class OrdinaryNode(name: String) extends Actor with ActorLogging {
   def connecting: Receive = {
     case Join(hostname) => join(hostname) /* This is the command we receive from the client (e.g. console) */
     case Init(hostname) => init(hostname) /* This is the command we receive from the client, to ask SN info from LoadBalancer */
-    case ReplySNRef(actor:ActorRef, hostname:String) => actor ! Identify(hostname) /* If ON got a reply from LoadBalancer, it will call join to register on SN */
+    case ReplySNRef(actor:ActorRef, hostname:String) => 
+      log.info("ACTOR REF: {}", actor)
+      actor ! Identify(hostname) /* If ON got a reply from LoadBalancer, it will call join to register on SN */
+
     case ActorIdentity(host: String, Some(actorRef)) => /* This is the response to the Identify message. It contains the reference to the supernode. */
       context.become(idle(actorRef) orElse common) /* We are now connected, so we change our state to 'idle' */
       actorRef ! Join(name) /* Necessary so that the supernode also has our reference */

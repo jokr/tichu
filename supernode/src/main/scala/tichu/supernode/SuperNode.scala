@@ -39,9 +39,10 @@ class SuperNode(hostname: String, port: String) extends Actor with ActorLogging 
 
   
   override def preStart(): Unit = {
+    /*
     if (Files.exists(Paths.get("./remotes"))) {
       Source.fromFile("./remotes").getLines().filter(!_.equals(hostname)).foreach(connectToPeer)
-    }
+    } */
   }
 
 
@@ -52,16 +53,32 @@ class SuperNode(hostname: String, port: String) extends Actor with ActorLogging 
     log.info(s"Registered node $name.")
   }
 
-  def connectToPeer(host: String): Unit = {
-    val remote = context.actorSelection(s"akka.tcp://RemoteSystem@$host:2553/user/SuperNode")
+  def connectToPeer(answerList : Seq[ActorRef]): Unit = {
+    /*
+    val remote = context.actorSelection(s"akka.tcp://RemoteSystem@$host:2553/user/SuperNode") 
+
     remote ! Identify(s"$host")
-    remote ! ActorIdentity(s"$hostname:$port", Option(self))
+    remote ! ActorIdentity(s"$hostname:$port", Option(self))  */
+    val len = answerList.length
+    if (len > 0) {
+
+      var next = 0
+      for (i <- 0 until len) {
+        val remote = answerList(next)
+        next = (i + 1) % len
+        var strCode = remote.hashCode()
+        remote ! Identify(s"$strCode")
+      }
+      //val remote = answerList(0)
+      
+      //remote ! ActorIdentity(s"$hostname:$port", Option(self))
+    }
   }
 
-  def addPeer(host: String, actor: ActorRef): Unit = {
-    val peer = new PeerRegistry(host, actor)
-    peers += (host -> peer)
-    log.info(s"Connected peer $host.")
+  def addPeer(hash: String, actor: ActorRef): Unit = {
+    val peer = new PeerRegistry(hash, actor)
+    peers += (hash -> peer)
+    log.info(s"Connected peer $hash.")
   }
 
   def requestPlayers(): Unit = {
@@ -71,11 +88,12 @@ class SuperNode(hostname: String, port: String) extends Actor with ActorLogging 
 
 
   def receive = {
-    case ReplyAllSN(lists) =>   /* LoadBalacer reply all supernodes to each SN, after register on LB */
-      log.info(s"Lists: {}", lists)
+    case ReplyAllSN(answerList) =>   /* LoadBalacer reply all supernodes to each SN, after register on LB */
+      log.info(s"answerList: {}", answerList)
+      connectToPeer(answerList)
     case Join(name) => addNode(name, sender())
-    case ActorIdentity(host: String, Some(actorRef)) => addPeer(host, actorRef)
-    case ActorIdentity(host, None) => log.error("Could not connect to {}", host)
+    case ActorIdentity(hash: String, Some(actorRef)) => addPeer(hash, actorRef)
+    case ActorIdentity(hash, None) => log.error("Could not connect to {}", hash)
     case SearchingMatch() =>
       val node = nodes.get(sender().path).get
       node.searching()
