@@ -36,7 +36,7 @@ class SuperNode(hostname: String, port: String) extends Actor with ActorLogging 
   private val broker: ActorRef = context.actorOf(Props(classOf[MatchBroker], 4), "Broker")
 
   private val nodes = mutable.Map[String, (Player, ActorRef)]()
-  private val peers = mutable.Map[ActorPath, PeerRegistry]()
+  private val peers = mutable.Map[String, PeerRegistry]()
 
   private var requestSeqNum = 0
   private val answeredRequests = mutable.Set[(ActorPath, Int)]()
@@ -50,7 +50,7 @@ class SuperNode(hostname: String, port: String) extends Actor with ActorLogging 
     if (Files.exists(Paths.get("./remotes"))) {
       Source.fromFile("./remotes").getLines().filter(!_.equals(hostname)).foreach(connectToPeer)
     } */
-
+  }
 
 
 
@@ -118,7 +118,7 @@ class SuperNode(hostname: String, port: String) extends Actor with ActorLogging 
      * Peer node not found.
      */    
     case ActorIdentity(hash, None) => log.error("Could not connect to {}", hash)
-    case SearchingMatch() =>
+    case SearchingMatch(name) =>
       val node = nodes.get(name).get._1
       log.debug("{} is searching for a match.", name)
       node.searching()
