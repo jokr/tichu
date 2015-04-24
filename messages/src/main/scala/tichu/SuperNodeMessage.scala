@@ -1,17 +1,17 @@
 package tichu
 
-import akka.actor.{ActorPath, ActorRef}
+import akka.actor.ActorRef
 
 object SuperNodeMessage {
 
   final case class Join(name: String)
 
-  final case class Invite(players: Seq[String])
+  final case class Invite(name: String)
 
-  final case class Ready(remotes: Seq[ActorRef])
+  final case class Ready(name: String, remotes: Seq[Player])
 
-  final case class PlayerRequest(origin: ActorPath, seqNum: Int, players: Seq[ActorRef])
+  final case class PlayerRequest(origin: ActorRef, seqNum: Int)
 
-  final case class AvailablePlayers(request: (ActorPath, Int), players: Seq[ActorRef])
+  final case class AvailablePlayers(players: Seq[Player])
 
 }

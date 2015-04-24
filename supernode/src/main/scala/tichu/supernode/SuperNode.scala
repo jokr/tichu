@@ -5,9 +5,15 @@ import java.nio.file.{Files, Paths}
 import akka.actor._
 import com.typesafe.config.ConfigFactory
 import tichu.ClientMessage.{Accept, SearchingMatch}
+
 import tichu.SuperNodeMessage.{Join, PlayerRequest}
 import tichu.supernode.MatchBroker.{Accepted, AddPlayer, RequestPlayers}
 import tichu.LoadBalancerMessage.{Register,ReplyAllSN}
+
+import tichu.Player
+import tichu.SuperNodeMessage._
+
+
 
 import scala.collection.mutable
 import scala.io.Source
@@ -27,9 +33,10 @@ object SuperNode extends App {
 }
 
 class SuperNode(hostname: String, port: String) extends Actor with ActorLogging {
-  private val broker: ActorRef = context.actorOf(Props(classOf[MatchBroker], 4))
-  private val nodes = mutable.Map[ActorPath, NodeRegistry]()
-  private val peers = mutable.Map[String, PeerRegistry]()
+  private val broker: ActorRef = context.actorOf(Props(classOf[MatchBroker], 4), "Broker")
+
+  private val nodes = mutable.Map[String, (Player, ActorRef)]()
+  private val peers = mutable.Map[ActorPath, PeerRegistry]()
 
   private var requestSeqNum = 0
   private val answeredRequests = mutable.Set[(ActorPath, Int)]()
@@ -43,13 +50,13 @@ class SuperNode(hostname: String, port: String) extends Actor with ActorLogging 
     if (Files.exists(Paths.get("./remotes"))) {
       Source.fromFile("./remotes").getLines().filter(!_.equals(hostname)).foreach(connectToPeer)
     } */
-  }
+
 
 
 
   def addNode(name: String, actor: ActorRef): Unit = {
-    val node = new NodeRegistry(name, actor)
-    nodes += (actor.path -> node)
+    val node = new Player(name, self)
+    nodes += (name -> (node, actor))
     log.info(s"Registered node $name.")
   }
 
@@ -75,39 +82,85 @@ class SuperNode(hostname: String, port: String) extends Actor with ActorLogging 
     }
   }
 
+
   def addPeer(hash: String, actor: ActorRef): Unit = {
     val peer = new PeerRegistry(hash, actor)
     peers += (hash -> peer)
     log.info(s"Connected peer $hash.")
+
   }
 
   def requestPlayers(): Unit = {
     requestSeqNum += 1
-    peers.values.foreach(_.actor ! PlayerRequest(self.path, requestSeqNum, Seq()))
+    peers.values.foreach(_.actor ! PlayerRequest(self, requestSeqNum))
   }
 
 
   def receive = {
+    /** 
+     * Receive all registed SN info from LoadBalancer 
+     */
     case ReplyAllSN(answerList) =>   /* LoadBalacer reply all supernodes to each SN, after register on LB */
       log.info(s"answerList: {}", answerList)
       connectToPeer(answerList)
+
+    /**
+     * Receive identity from client node.
+     */      
     case Join(name) => addNode(name, sender())
+
+    /**
+     * Receive identity from peer node.
+     */
     case ActorIdentity(hash: String, Some(actorRef)) => addPeer(hash, actorRef)
+
+    /**
+     * Peer node not found.
+     */    
     case ActorIdentity(hash, None) => log.error("Could not connect to {}", hash)
     case SearchingMatch() =>
-      val node = nodes.get(sender().path).get
+      val node = nodes.get(name).get._1
+      log.debug("{} is searching for a match.", name)
       node.searching()
       broker ! AddPlayer(node)
-    case Accept() =>
-      val node = nodes.get(sender().path).get
-      broker ! Accepted(node)
+
+    /**
+     * Client node accepts the invite.
+     */
+    case Accept(name) =>
+      broker forward Accept(name)
+
+    /**
+     * Broker requests more players. Broadcast to peers.
+     */
     case RequestPlayers() => requestPlayers()
-    case PlayerRequest(origin, seqNum, players) =>
-      if (!answeredRequests.contains((origin, seqNum))) {
-        log.debug("Dispatch player request to our broker.")
-        broker forward PlayerRequest(origin, seqNum, players)
+
+    /**
+     * Receive a request for players from another supernode.
+     */
+    case PlayerRequest(origin, seqNum) =>
+      if (!answeredRequests.contains((origin.path, seqNum))) {
+        log.debug("Answer request for players.")
+        answeredRequests.add((origin.path, seqNum))
+        val availablePlayers = nodes.values.filter(node => node._1.isSearching).map(_._1).toSeq
+
+        if (availablePlayers.isEmpty) {
+          log.debug("No available players.")
+        } else {
+          log.debug("{} available players.", availablePlayers.length)
+          origin ! AvailablePlayers(availablePlayers)
+        }
       } else {
         log.debug("Received a player request that we already answered.")
       }
+
+    /**
+     * Receive available players from peer.
+     */
+    case AvailablePlayers(players) => broker forward AvailablePlayers(players)
+
+    case Invite(name) => nodes.get(name).get._2 forward Invite(name)
+
+    case Ready(name, remotes) => nodes.get(name).get._2 forward Ready(name, remotes)
   }
 }

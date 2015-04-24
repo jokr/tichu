@@ -1,10 +1,12 @@
 package tichu.ordinarynode
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Terminated}
+
 import tichu.ClientMessage.{Accept, SearchingMatch}
 import tichu.SuperNodeMessage.{Join, Invite}
 import tichu.LoadBalancerMessage.{Init}
-import tichu.ordinarynode.InternalMessage.{Subscribe, Prompt, Shutdown}
+import tichu.ordinarynode.InternalMessage._
+
 
 class ConsoleActor(node: ActorRef) extends Actor with ActorLogging {
   val input = io.Source.stdin.getLines()
@@ -16,14 +18,19 @@ class ConsoleActor(node: ActorRef) extends Actor with ActorLogging {
   def receive = {
     case Prompt => prompt()
     case Terminated => quit()
-    case Invite(players) => matchInvite(players)
+    case Invited() => matchInvite()
   }
 
   def prompt() = {
     print("tichu$ ")
     val HelpCmd = "help ([A-Za-z0-9]*)".r
-    //val JoinCmd = "join ([^\\s]*)".r
+
+    //val InitCmd = "join ([^\\s]*)".r
     val InitCmd = "init ([^\\s]*)".r
+
+    //val JoinCmd = "join ([^\\s]*)".r
+    val UserNameCmd = "name ([A-Za-z0-9]+)".r
+
 
     val command = input.next()
     command.trim() match {
@@ -31,24 +38,28 @@ class ConsoleActor(node: ActorRef) extends Actor with ActorLogging {
         context.unwatch(node)
         node ! Shutdown("User request")
         context.stop(self)
-      case "search" => node ! SearchingMatch()
+      case "search" => node ! Searching()
       case HelpCmd(commandName) => help(commandName)
-      //case JoinCmd(hostname) => node ! Join(hostname)
+
+      //case InitCmd(hostname) => node ! Join(hostname)
       case InitCmd(hostname) => node ! Init(hostname)
+
+      //case JoinCmd(hostname) => node ! Join(hostname)
+      case UserNameCmd(userName) => node ! UserName(userName)
+
       case _ => help(null)
     }
   }
 
-  def matchInvite(players: Seq[String]) = {
+  def matchInvite() = {
     println()
-    println( "A match has been found with the following players: ")
-    players foreach println
+    println( "A match has been found.")
     print( "Do you accept? (Y/n): ")
     val answer = input.next().trim().toLowerCase
     if (answer.equals("n")) {
       // TODO decline
     } else {
-      node ! Accept()
+      node ! Accepted()
     }
   }
 
@@ -57,6 +68,7 @@ class ConsoleActor(node: ActorRef) extends Actor with ActorLogging {
       println(
         """The following commands are available:
           |init <hostname>
+          |name <user name>
           |search
           |help <command name>
           |quit

@@ -3,8 +3,10 @@ package tichu.ordinarynode
 import akka.actor._
 import tichu.ClientMessage.{Accept, SearchingMatch}
 import tichu.SuperNodeMessage.{Invite, Join, Ready}
-import tichu.ordinarynode.InternalMessage.{Prompt, Shutdown, Subscribe}
+
+import tichu.ordinarynode.InternalMessage._
 import tichu.LoadBalancerMessage.{Init, InitSN,ReplySNRef}
+
 
 object InternalMessage {
 
@@ -14,10 +16,19 @@ object InternalMessage {
 
   case object Prompt
 
+  case class UserName(userName: String)
+
+  case class Searching()
+
+  case class Invited()
+
+  case class Accepted()
+
 }
 
-class OrdinaryNode(name: String) extends Actor with ActorLogging {
+class OrdinaryNode() extends Actor with ActorLogging {
   val subscribers = collection.mutable.MutableList[ActorRef]()
+  var userName = "Dragon"
 
   /**
    * Initial Stage, to get SN info from LoadBalancer
@@ -65,27 +76,36 @@ class OrdinaryNode(name: String) extends Actor with ActorLogging {
       log.info("ACTOR REF: {}", actor)
       actor ! Identify(hostname) /* If ON got a reply from LoadBalancer, it will call join to register on SN */
 
+    case UserName(newUserName) => /* This command sets the user name. */
+      userName = newUserName
+      subscribers.foreach(_ ! Prompt)
+
     case ActorIdentity(host: String, Some(actorRef)) => /* This is the response to the Identify message. It contains the reference to the supernode. */
       context.become(idle(actorRef) orElse common) /* We are now connected, so we change our state to 'idle' */
-      actorRef ! Join(name) /* Necessary so that the supernode also has our reference */
+      actorRef ! Join(userName) /* Necessary so that the supernode also has our reference */
       subscribers.foreach(_ ! Prompt) /* Notify the client that we are ready (e.g. console) */
-    case ActorIdentity(hostname, None) => log.error("Could not connect to {}", hostname) /* Exception handler when our identify message was not received */
+    case ActorIdentity(hostname, None) =>
+      log.error("Could not connect to {}", hostname) /* Exception handler when our identify message was not received */
+      subscribers.foreach(_ ! Prompt)
   }
 
   def idle(superNode: ActorRef): Receive = {
-    case SearchingMatch() =>
-      superNode ! SearchingMatch()
+    case Searching() =>
+      superNode ! SearchingMatch(userName)
       context.become(searching(superNode) orElse common)
   }
 
   def searching(superNode: ActorRef): Receive = {
-    case Invite(players) =>
+    case Invite(name) =>
+      assert(name.equals(userName), "Name on invite does not match username.")
       context.become(matched(superNode) orElse common)
-      subscribers.foreach(_ ! Invite(players))
+      subscribers.foreach(_ ! Invited())
   }
 
   def matched(superNode: ActorRef): Receive = {
-    case Accept() => superNode ! Accept()
-    case Ready(players) => log.info("match with {}", players)
+    case Accepted() => superNode ! Accept(userName)
+    case Ready(name, players) =>
+      assert(name.equals(userName), "Name on ready message does not match username.")
+      log.info("match with {}", players)
   }
 }
