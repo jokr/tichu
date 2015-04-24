@@ -1,9 +1,8 @@
 package tichu.ordinarynode
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Terminated}
-import tichu.ClientMessage.{Accept, SearchingMatch}
-import tichu.SuperNodeMessage.{Join, Invite}
-import tichu.ordinarynode.InternalMessage.{UserName, Subscribe, Prompt, Shutdown}
+import tichu.SuperNodeMessage.Join
+import tichu.ordinarynode.InternalMessage._
 
 class ConsoleActor(node: ActorRef) extends Actor with ActorLogging {
   val input = io.Source.stdin.getLines()
@@ -15,7 +14,7 @@ class ConsoleActor(node: ActorRef) extends Actor with ActorLogging {
   def receive = {
     case Prompt => prompt()
     case Terminated => quit()
-    case Invite() => matchInvite()
+    case Invited() => matchInvite()
   }
 
   def prompt() = {
@@ -30,7 +29,7 @@ class ConsoleActor(node: ActorRef) extends Actor with ActorLogging {
         context.unwatch(node)
         node ! Shutdown("User request")
         context.stop(self)
-      case "search" => node ! SearchingMatch()
+      case "search" => node ! Searching()
       case HelpCmd(commandName) => help(commandName)
       case JoinCmd(hostname) => node ! Join(hostname)
       case UserNameCmd(userName) => node ! UserName(userName)
@@ -46,7 +45,7 @@ class ConsoleActor(node: ActorRef) extends Actor with ActorLogging {
     if (answer.equals("n")) {
       // TODO decline
     } else {
-      node ! Accept()
+      node ! Accepted()
     }
   }
 

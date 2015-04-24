@@ -6,9 +6,9 @@ object SuperNodeMessage {
 
   final case class Join(name: String)
 
-  final case class Invite()
+  final case class Invite(name: String)
 
-  final case class Ready(remotes: Seq[Player])
+  final case class Ready(name: String, remotes: Seq[Player])
 
   final case class PlayerRequest(origin: ActorRef, seqNum: Int)
 

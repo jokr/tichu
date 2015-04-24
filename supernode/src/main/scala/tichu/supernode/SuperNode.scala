@@ -6,7 +6,7 @@ import akka.actor._
 import com.typesafe.config.ConfigFactory
 import tichu.ClientMessage.{Accept, SearchingMatch}
 import tichu.Player
-import tichu.SuperNodeMessage.{AvailablePlayers, Join, PlayerRequest}
+import tichu.SuperNodeMessage._
 import tichu.supernode.MatchBroker.{AddPlayer, RequestPlayers}
 
 import scala.collection.mutable
@@ -24,7 +24,8 @@ object SuperNode extends App {
 
 class SuperNode(hostname: String, port: String) extends Actor with ActorLogging {
   private val broker: ActorRef = context.actorOf(Props(classOf[MatchBroker], 4), "Broker")
-  private val nodes = mutable.Map[ActorPath, Player]()
+
+  private val nodes = mutable.Map[String, (Player, ActorRef)]()
   private val peers = mutable.Map[ActorPath, PeerRegistry]()
 
   private var requestSeqNum = 0
@@ -38,8 +39,8 @@ class SuperNode(hostname: String, port: String) extends Actor with ActorLogging 
   }
 
   def addNode(name: String, actor: ActorRef): Unit = {
-    val node = new Player(name, actor)
-    nodes += (actor.path -> node)
+    val node = new Player(name, self)
+    nodes += (name -> (node, actor))
     log.info(s"Registered node $name.")
   }
 
@@ -61,21 +62,39 @@ class SuperNode(hostname: String, port: String) extends Actor with ActorLogging 
   }
 
   def receive = {
+    /**
+     * Receive identity from client node.
+     */
     case Join(name) => addNode(name, sender())
 
+    /**
+     * Receive identity from peer node.
+     */
     case ActorIdentity(host: String, Some(actorRef)) => addPeer(host, actorRef)
 
+    /**
+     * Peer node not found.
+     */
     case ActorIdentity(host, None) => log.error("Could not connect to {}", host)
 
-    case SearchingMatch() =>
-      val node = nodes.get(sender().path).get
-      log.debug("{} is searching for a match.", node.name)
+    /**
+     * Client node searches for a match.
+     */
+    case SearchingMatch(name) =>
+      val node = nodes.get(name).get._1
+      log.debug("{} is searching for a match.", name)
       node.searching()
       broker ! AddPlayer(node)
 
-    case Accept() =>
-      broker forward Accept()
+    /**
+     * Client node accepts the invite.
+     */
+    case Accept(name) =>
+      broker forward Accept(name)
 
+    /**
+     * Broker requests more players. Broadcast to peers.
+     */
     case RequestPlayers() => requestPlayers()
 
     /**
@@ -85,7 +104,8 @@ class SuperNode(hostname: String, port: String) extends Actor with ActorLogging 
       if (!answeredRequests.contains((origin.path, seqNum))) {
         log.debug("Answer request for players.")
         answeredRequests.add((origin.path, seqNum))
-        val availablePlayers = nodes.values.filter(node => node.isSearching).toSeq
+        val availablePlayers = nodes.values.filter(node => node._1.isSearching).map(_._1).toSeq
+
         if (availablePlayers.isEmpty) {
           log.debug("No available players.")
         } else {
@@ -96,6 +116,13 @@ class SuperNode(hostname: String, port: String) extends Actor with ActorLogging 
         log.debug("Received a player request that we already answered.")
       }
 
+    /**
+     * Receive available players from peer.
+     */
     case AvailablePlayers(players) => broker forward AvailablePlayers(players)
+
+    case Invite(name) => nodes.get(name).get._2 forward Invite(name)
+
+    case Ready(name, remotes) => nodes.get(name).get._2 forward Ready(name, remotes)
   }
 }

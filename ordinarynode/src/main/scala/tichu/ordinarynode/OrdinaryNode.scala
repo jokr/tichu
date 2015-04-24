@@ -3,7 +3,7 @@ package tichu.ordinarynode
 import akka.actor._
 import tichu.ClientMessage.{Accept, SearchingMatch}
 import tichu.SuperNodeMessage.{Invite, Join, Ready}
-import tichu.ordinarynode.InternalMessage.{UserName, Prompt, Shutdown, Subscribe}
+import tichu.ordinarynode.InternalMessage._
 
 object InternalMessage {
 
@@ -14,6 +14,12 @@ object InternalMessage {
   case object Prompt
 
   case class UserName(userName: String)
+
+  case class Searching()
+
+  case class Invited()
+
+  case class Accepted()
 
 }
 
@@ -64,19 +70,22 @@ class OrdinaryNode() extends Actor with ActorLogging {
   }
 
   def idle(superNode: ActorRef): Receive = {
-    case SearchingMatch() =>
-      superNode ! SearchingMatch()
+    case Searching() =>
+      superNode ! SearchingMatch(userName)
       context.become(searching(superNode) orElse common)
   }
 
   def searching(superNode: ActorRef): Receive = {
-    case Invite() =>
+    case Invite(name) =>
+      assert(name.equals(userName), "Name on invite does not match username.")
       context.become(matched(superNode) orElse common)
-      subscribers.foreach(_ ! Invite())
+      subscribers.foreach(_ ! Invited())
   }
 
   def matched(superNode: ActorRef): Receive = {
-    case Accept() => superNode ! Accept()
-    case Ready(players) => log.info("match with {}", players)
+    case Accepted() => superNode ! Accept(userName)
+    case Ready(name, players) =>
+      assert(name.equals(userName), "Name on ready message does not match username.")
+      log.info("match with {}", players)
   }
 }

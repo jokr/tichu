@@ -1,6 +1,6 @@
 package tichu.supernode
 
-import akka.actor.{Actor, ActorLogging, ActorPath}
+import akka.actor.{Actor, ActorLogging}
 import tichu.ClientMessage.Accept
 import tichu.Player
 import tichu.SuperNodeMessage.AvailablePlayers
@@ -21,13 +21,13 @@ object MatchBroker {
  * @param numberOfPlayers the desired number of players
  */
 class MatchBroker(numberOfPlayers: Integer) extends Actor with ActorLogging {
-  val searchingPlayers = scala.collection.mutable.Map[ActorPath, Player]()
+  val searchingPlayers = scala.collection.mutable.Map[String, Player]()
 
   log.debug("Started new broker.")
 
   def addPlayer(nodes: Seq[Player], request: Boolean = false) = {
     for (node <- nodes) {
-      searchingPlayers += (node.actorRef.path -> node)
+      searchingPlayers += (node.name -> node)
     }
 
     if (searchingPlayers.size >= numberOfPlayers) {
@@ -55,9 +55,10 @@ class MatchBroker(numberOfPlayers: Integer) extends Actor with ActorLogging {
   }
 
   def matching: Receive = {
-    case Accept() =>
-      log.debug("{} accepted the match.", sender())
-      val node = searchingPlayers.get(sender().path).get
+    case Accept(name) =>
+      log.debug("{} accepted the match.", name)
+      val node = searchingPlayers.get(name).get
+
       node.accepted()
 
       val accepted = searchingPlayers.values.filter(player => player.acceptedInvite).toSeq
