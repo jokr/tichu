@@ -5,7 +5,9 @@ object Build extends Build {
   lazy val commonSettings = Seq(
     organization := "edu.cmu.ece",
     version := "0.0.alpha1",
-    scalaVersion := "2.11.6"
+    scalaVersion := "2.11.6",
+    libraryDependencies ++= akkaDependencies,
+    resolvers += "Akka Snapshot Repository" at "http://repo.akka.io/snapshots/"
   )
 
   val akkaDependencies = Seq(
@@ -14,9 +16,7 @@ object Build extends Build {
   )
 
   lazy val messages = (project in file("messages")).settings(commonSettings: _*).settings(
-    name := "Tichu Messages",
-    libraryDependencies ++= akkaDependencies,
-    resolvers += "Akka Snapshot Repository" at "http://repo.akka.io/snapshots/"
+    name := "Tichu Messages"
   )
 
   lazy val client = (project in file("client")).settings(commonSettings: _*).settings(
@@ -25,23 +25,17 @@ object Build extends Build {
     libraryDependencies += "org.scalafx" %% "scalafx" % "8.0.0-R4",
     libraryDependencies += "org.controlsfx" % "controlsfx" % "8.20.8",
     resolvers += "Akka Snapshot Repository" at "http://repo.akka.io/snapshots/"
-  ).dependsOn(ordinarynode)
+  ).dependsOn(clientnode)
 
   lazy val supernode = (project in file("supernode")).settings(commonSettings: _*).settings(
-    name := "Tichu Super Node",
-    libraryDependencies ++= akkaDependencies,
-    resolvers += "Akka Snapshot Repository" at "http://repo.akka.io/snapshots/"
-  ).dependsOn(messages)
+    name := "Tichu Super Node"
+  ).dependsOn(messages, bootstrapper)
 
-  lazy val ordinarynode = (project in file("ordinarynode")).settings(commonSettings: _*).settings(
-    name := "Tichu Ordinary Node",
-    libraryDependencies ++= akkaDependencies,
-    resolvers += "Akka Snapshot Repository" at "http://repo.akka.io/snapshots/"
-  ).dependsOn(messages)
+  lazy val clientnode = (project in file("clientnode")).settings(commonSettings: _*).settings(
+    name := "Tichu Client Node"
+  ).dependsOn(messages, bootstrapper)
 
   lazy val bootstrapper = (project in file("bootstrapper")).settings(commonSettings: _*).settings(
-    name := "Tichu bBootstrapper Node",
-    libraryDependencies ++= akkaDependencies,
-    resolvers += "Akka Snapshot Repository" at "http://repo.akka.io/snapshots/"
-  ).dependsOn(messages)  
+    name := "Tichu Bootstrapper Node"
+  ).dependsOn(messages)
 }

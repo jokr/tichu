@@ -1,7 +1,7 @@
 package tichu.gui
 
 import org.controlsfx.dialog.Dialogs
-import tichu.ordinarynode.Shutdown
+import tichu.clientnode.Shutdown
 
 import scalafx.Includes._
 import scalafx.application.JFXApp

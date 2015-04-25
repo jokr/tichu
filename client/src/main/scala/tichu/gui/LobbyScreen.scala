@@ -1,6 +1,6 @@
 package tichu.gui
 
-import tichu.ordinarynode.Searching
+import tichu.clientnode.Searching
 
 import scalafx.Includes._
 import scalafx.event.ActionEvent

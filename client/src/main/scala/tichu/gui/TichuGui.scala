@@ -1,7 +1,7 @@
 package tichu.gui
 
 import akka.actor.{Actor, ActorLogging, ActorRef}
-import tichu.ordinarynode.{LoginFailure, LoginSuccess, Subscribe}
+import tichu.clientnode.{LoginFailure, LoginSuccess, Subscribe}
 
 class TichuGui(controller: ActorRef) extends Actor with ActorLogging {
   context.watch(controller)

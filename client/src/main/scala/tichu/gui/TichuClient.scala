@@ -4,7 +4,7 @@ import javafx.embed.swing.JFXPanel
 
 import akka.actor.{Props, ActorSystem}
 import com.typesafe.config.ConfigFactory
-import tichu.ordinarynode.OrdinaryNode
+import tichu.clientnode.ClientNode
 
 object TichuClient extends App {
   new JFXPanel()
@@ -17,6 +17,6 @@ object TichuClient extends App {
 
   val config = ConfigFactory.load()
   val system = ActorSystem("RemoteSystem", config)
-  val controller = system.actorOf(Props(classOf[OrdinaryNode]), "controllerNode")
+  val controller = system.actorOf(Props(classOf[ClientNode]), "controllerNode")
   val view = system.actorOf(Props(classOf[TichuGui], controller).withDispatcher("scalafx-dispatcher"), "view")
 }

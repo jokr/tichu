@@ -1,6 +1,6 @@
 package tichu.gui
 
-import tichu.ordinarynode.Login
+import tichu.clientnode.Login
 
 import scalafx.Includes._
 import scalafx.event.ActionEvent

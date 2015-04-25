@@ -1,13 +1,14 @@
-package tichu.ordinarynode
+package tichu.clientnode
 
 import akka.actor._
 import tichu.ClientMessage.{Accept, SearchingMatch}
 import tichu.LoadBalancerMessage.{InitSN, ReplySNRef}
 import tichu.SuperNodeMessage.{Invite, Join, Ready}
+import tichu.messages.{Login, Subscribe, Shutdown}
 
-class OrdinaryNode() extends Actor with ActorLogging {
+class ClientNode() extends Actor with ActorLogging {
   val subscribers = collection.mutable.MutableList[ActorRef]()
-  val bsHostName = context.system.settings.config.getString("tichu.bootstrapServer")
+  val bootstrapServer = context.system.settings.config.getString("tichu.bootstrapper-server")
   var userName = None: Option[String]
 
   /**
@@ -15,7 +16,6 @@ class OrdinaryNode() extends Actor with ActorLogging {
    * @param hostname resolvable address of the loadbalancer, must exactly match the config of the supernode
    * @param port optional port address, defaults to 2663
    */
-
   def init(hostname: String, port: String = "2663"): Unit = {
     val remote = context.actorSelection(s"akka.tcp://RemoteSystem@$hostname:$port/user/LoadBalancer")
     remote ! InitSN()
