@@ -1,6 +1,8 @@
 package tichu.bootstrapper
 
-import akka.actor.{ActorRef, ActorLogging, Actor}
+import akka.actor.{Actor, ActorLogging, ActorRef}
+import akka.remote.DisassociatedEvent
+import akka.remote.transport.AssociationHandle.Disassociated
 
 import scala.collection.mutable
 import scala.util.Random
@@ -8,6 +10,8 @@ import scala.util.Random
 class Bootstrapper() extends Actor with ActorLogging {
   val nodes = mutable.Queue[ActorRef]()
   private val random = new Random
+
+  context.system.eventStream.subscribe(self, classOf[DisassociatedEvent])
 
   def addNode(node: ActorRef) = {
     log.info("Added super node: {}.", node)
@@ -30,6 +34,7 @@ class Bootstrapper() extends Actor with ActorLogging {
     case Register() =>
       sender() ! peers()
       addNode(sender())
+    case Disassociated(info) => log.warning("{}", info)
     case default => log.warning("Received unexpected message: {}", default)
   }
 }

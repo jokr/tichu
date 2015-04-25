@@ -11,11 +11,11 @@ package object supernode {
 
   final case class SearchingMatch(userName: String)
 
-  final case class Invite(userName: String)
+  final case class Invite()
 
   final case class Accept(userName: String)
 
-  final case class Decline(userName: String)
+  final case class Decline()
 
   final case class Ready(userName: String, remotes: Seq[Player])
 

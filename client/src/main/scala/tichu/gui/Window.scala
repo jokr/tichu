@@ -1,7 +1,10 @@
 package tichu.gui
 
+import javafx.scene.control.{ButtonType, Alert}
+import javafx.scene.control.Alert.AlertType
+
 import org.controlsfx.dialog.Dialogs
-import tichu.clientnode.Shutdown
+import tichu.clientnode.{Declined, Accepted, Shutdown}
 
 import scalafx.Includes._
 import scalafx.application.JFXApp
@@ -44,5 +47,18 @@ object Window extends JFXApp {
 
   def lobbyScreen(userName: String) = {
     stage.scene = new LobbyScreen(userName).screen
+  }
+
+  def showInvite() = {
+    val alert = new Alert(AlertType.CONFIRMATION)
+    alert.setTitle("Match is ready!")
+    alert.setContentText("Do you want to play?")
+
+    val result = alert.showAndWait()
+    if(result.get() == ButtonType.OK) {
+      TichuClient.controller ! Accepted()
+    } else {
+      TichuClient.controller ! Declined()
+    }
   }
 }

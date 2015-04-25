@@ -9,7 +9,7 @@ import scala.collection.mutable
 
 class SuperNode extends Actor with ActorLogging {
   val bootstrapperServer = context.system.settings.config.getString("tichu.bootstrapper-server")
-  private val broker: ActorRef = context.actorOf(Props(classOf[MatchBroker], 4), "Broker")
+  private val broker: ActorRef = context.actorOf(Props(classOf[MatchBroker], 2), "Broker")
 
   private val nodes = mutable.Map[String, (Player, ActorRef)]()
   private val peers = mutable.Map[String, PeerRegistry]()
@@ -20,7 +20,7 @@ class SuperNode extends Actor with ActorLogging {
   context.actorSelection(s"akka.tcp://RemoteSystem@$bootstrapperServer:2553/user/bootstrapper") ! Identify("bootstrapper")
 
   def addNode(name: String, actor: ActorRef): Unit = {
-    val node = new Player(name, self)
+    val node = new Player(name, self, sender())
     nodes += (name ->(node, actor))
     actor ! Welcome(name)
     log.info(s"Registered node $name.")
@@ -31,7 +31,6 @@ class SuperNode extends Actor with ActorLogging {
     peers += (hash -> peer)
     log.info(s"Connected peer $hash.")
   }
-
 
   def requestPlayers(): Unit = {
     requestSeqNum += 1
@@ -47,7 +46,7 @@ class SuperNode extends Actor with ActorLogging {
       log.error("Failed to connect to bootstrapper.")
       context.stop(self)
 
-    case initialPeers: Seq[ActorRef] =>
+    case initialPeers: Seq[ActorRef @unchecked] =>
       log.info("Received {} initial peers.", initialPeers.length)
       initialPeers.foreach(_ ! Identify)
       context.become(connected orElse common)
@@ -77,8 +76,7 @@ class SuperNode extends Actor with ActorLogging {
     /**
      * Client node accepts the invite.
      */
-    case Accept(name) =>
-      broker forward Accept(name)
+    case Accept(name) => broker forward Accept(name)
 
     /**
      * Broker requests more players. Broadcast to peers.
@@ -108,8 +106,6 @@ class SuperNode extends Actor with ActorLogging {
      * Receive available players from peer.
      */
     case AvailablePlayers(players) => broker forward AvailablePlayers(players)
-
-    case Invite(name) => nodes.get(name).get._2 forward Invite(name)
 
     case Ready(name, remotes) => nodes.get(name).get._2 forward Ready(name, remotes)
   }

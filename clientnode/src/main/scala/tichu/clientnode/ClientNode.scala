@@ -77,7 +77,7 @@ class ClientNode extends Actor with ActorLogging {
   }
 
   def searching(superNode: ActorRef): Receive = {
-    case Invite(name) =>
+    case Invite() =>
       context.become(matched(superNode) orElse common)
       subscribers.foreach(_ ! Invited())
   }
