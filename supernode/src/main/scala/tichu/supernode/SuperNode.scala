@@ -1,38 +1,14 @@
 package tichu.supernode
 
-import java.nio.file.{Files, Paths}
-
 import akka.actor._
-import com.typesafe.config.ConfigFactory
-import tichu.ClientMessage.{Accept, SearchingMatch}
-
-import tichu.SuperNodeMessage.{Join, PlayerRequest}
-import tichu.supernode.MatchBroker.{Accepted, AddPlayer, RequestPlayers}
-import tichu.LoadBalancerMessage.{Register,ReplyAllSN, InformSN}
-
 import tichu.Player
-import tichu.SuperNodeMessage._
-
-
+import tichu.bootstrapper.Register
+import tichu.supernode.broker.{AddPlayer, MatchBroker, RequestPlayers}
 
 import scala.collection.mutable
-import scala.io.Source
 
-object SuperNode extends App {
-  val config = ConfigFactory.load()
-
-  val system = ActorSystem("RemoteSystem", config)
-  val superNode = system.actorOf(Props(
-    classOf[SuperNode],
-    config.getString("akka.remote.netty.tcp.hostname"),
-    config.getString("akka.remote.netty.tcp.port")),
-    name = "SuperNode")
-
-  /* When SuperNode Initial, it will automatically register to loadbalancer */
-  
-}
-
-class SuperNode(hostname: String, port: String) extends Actor with ActorLogging {
+class SuperNode extends Actor with ActorLogging {
+  val bootstrapperServer = context.system.settings.config.getString("tichu.bootstrapper-server")
   private val broker: ActorRef = context.actorOf(Props(classOf[MatchBroker], 4), "Broker")
 
   private val nodes = mutable.Map[String, (Player, ActorRef)]()
@@ -41,61 +17,19 @@ class SuperNode(hostname: String, port: String) extends Actor with ActorLogging 
   private var requestSeqNum = 0
   private val answeredRequests = mutable.Set[(ActorPath, Int)]()
 
-  val remoteLN = context.actorSelection(s"akka.tcp://RemoteSystem@127.0.0.1:2663/user/LoadBalancer")
-  remoteLN ! Register(hostname)
-
-  
-  override def preStart(): Unit = {
-    /*
-    if (Files.exists(Paths.get("./remotes"))) {
-      Source.fromFile("./remotes").getLines().filter(!_.equals(hostname)).foreach(connectToPeer)
-    } */
-  }
-
-
+  context.actorSelection(s"akka.tcp://RemoteSystem@$bootstrapperServer:2553/user/bootstrapper") ! Identify("bootstrapper")
 
   def addNode(name: String, actor: ActorRef): Unit = {
     val node = new Player(name, self)
-    nodes += (name -> (node, actor))
+    nodes += (name ->(node, actor))
+    actor ! Welcome(name)
     log.info(s"Registered node $name.")
   }
-
-  
-  def connectToPeer(answerList : Seq[ActorRef]): Unit = {
-    /*
-    val remote = context.actorSelection(s"akka.tcp://RemoteSystem@$host:2553/user/SuperNode") 
-
-    remote ! Identify(s"$host")
-    remote ! ActorIdentity(s"$hostname:$port", Option(self))  */
-    val len = answerList.length
-    if (len > 0) {
-
-      var next = 0
-      for (i <- 0 until len) {
-        val remote = answerList(next)
-        next = (i + 1) % len
-        var strCode = remote.hashCode()
-        remote ! Identify(s"$strCode")
-      }
-      //val remote = answerList(0)
-      
-      //remote ! ActorIdentity(s"$hostname:$port", Option(self))
-    }
-  }
-
-
-  /* Update new SN connection info */
-  def updateSN(actor: ActorRef): Unit = {
-    var newSNHash = actor.hashCode()
-    actor ! Identify(s"$newSNHash")
-  }
-
 
   def addPeer(hash: String, actor: ActorRef): Unit = {
     val peer = new PeerRegistry(hash, actor)
     peers += (hash -> peer)
     log.info(s"Connected peer $hash.")
-
   }
 
 
@@ -104,22 +38,25 @@ class SuperNode(hostname: String, port: String) extends Actor with ActorLogging 
     peers.values.foreach(_.actor ! PlayerRequest(self, requestSeqNum))
   }
 
+  def init: Receive = {
+    case ActorIdentity("bootstrapper", Some(bootstrapper)) =>
+      log.info("Received identity of bootstrapper: {}.", bootstrapper)
+      bootstrapper ! Register()
 
-  def receive = {
-    /** 
-     * Receive all registed SN info from LoadBalancer 
-     */
-    case ReplyAllSN(answerList) =>   /* LoadBalacer reply all supernodes to each SN, after register on LB */
-      log.info(s"answerList: {}", answerList)
-      connectToPeer(answerList)
+    case ActorIdentity("bootstrapper", None) =>
+      log.error("Failed to connect to bootstrapper.")
+      context.stop(self)
 
-    /**
-     * When new SN register on Load
-     */
-    case InformSN(actor) => updateSN(actor)
+    case initialPeers: Seq[ActorRef] =>
+      log.info("Received {} initial peers.", initialPeers.length)
+      initialPeers.foreach(_ ! Identify)
+      context.become(connected orElse common)
+  }
+
+  def connected: Receive = {
     /**
      * Receive identity from client node.
-     */      
+     */
     case Join(name) => addNode(name, sender())
 
     /**
@@ -129,7 +66,7 @@ class SuperNode(hostname: String, port: String) extends Actor with ActorLogging 
 
     /**
      * Peer node not found.
-     */    
+     */
     case ActorIdentity(hash, None) => log.error("Could not connect to {}", hash)
     case SearchingMatch(name) =>
       val node = nodes.get(name).get._1
@@ -176,4 +113,10 @@ class SuperNode(hostname: String, port: String) extends Actor with ActorLogging 
 
     case Ready(name, remotes) => nodes.get(name).get._2 forward Ready(name, remotes)
   }
+
+  def common: Receive = {
+    case default => log.warning("Received unexpected message: {}.", default)
+  }
+
+  def receive = init orElse common
 }
