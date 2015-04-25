@@ -1,6 +1,7 @@
 package tichu.clientnode
 
 import akka.actor._
+import tichu.bootstrapper.Request
 import tichu.supernode._
 
 class ClientNode extends Actor with ActorLogging {
@@ -41,13 +42,25 @@ class ClientNode extends Actor with ActorLogging {
       userName = Some(name)
       contactBootstrapper()
 
-    case ActorIdentity("bootstrapper", Some(actorRef)) =>
-      log.debug("Received address for super node: {}.", actorRef)
-      actorRef ! Join(userName.get)
+    case ActorIdentity("bootstrapper", Some(bootstrapper)) =>
+      log.debug("Received address for bootstrapper: {}.", bootstrapper)
+      bootstrapper ! Request()
 
     case ActorIdentity("bootstrapper", None) =>
       log.error("Could not find bootstrapper.")
       subscribers.foreach(_ ! LoginFailure("Could not contact bootstrapper."))
+
+    case superNode: ActorRef =>
+      log.debug("Received path for supernode: {}.", superNode)
+      superNode ! Identify("supernode")
+
+    case ActorIdentity("supernode", Some(superNode)) =>
+      log.debug("Received address for supernode: {}.", superNode)
+      superNode ! Join(userName.get)
+
+    case ActorIdentity("supernode", None) =>
+      log.error("Could not find supernode.")
+      subscribers.foreach(_ ! LoginFailure("Could not contact supernode."))
 
     case Welcome(name) =>
       context.become(idle(sender()) orElse common)

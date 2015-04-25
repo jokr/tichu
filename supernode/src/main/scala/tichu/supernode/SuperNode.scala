@@ -1,16 +1,11 @@
 package tichu.supernode
 
 import akka.actor._
-import akka.pattern.ask
-import akka.util.Timeout
 import tichu.Player
 import tichu.bootstrapper.Register
-import tichu.supernode.broker.{RequestPlayers, AddPlayer, MatchBroker}
+import tichu.supernode.broker.{AddPlayer, MatchBroker, RequestPlayers}
 
 import scala.collection.mutable
-import scala.concurrent.Await
-import scala.concurrent.ExecutionContext.Implicits.global
-import scala.concurrent.duration._
 
 class SuperNode extends Actor with ActorLogging {
   val bootstrapperServer = context.system.settings.config.getString("tichu.bootstrapper-server")
@@ -22,14 +17,7 @@ class SuperNode extends Actor with ActorLogging {
   private var requestSeqNum = 0
   private val answeredRequests = mutable.Set[(ActorPath, Int)]()
 
-  override def preStart(): Unit = {
-    implicit val timeout = Timeout(5.seconds)
-    val bootstrapper = context.actorSelection(s"akka.tcp://RemoteSystem@$bootstrapperServer:2553/user/bootstrapper").resolveOne()
-    val initialPeers = Await.result(bootstrapper flatMap {
-      case ref => ask(ref, Register()).mapTo[Seq[ActorRef]]
-    }, timeout.duration)
-    initialPeers.foreach(_ ! Identify)
-  }
+  context.actorSelection(s"akka.tcp://RemoteSystem@$bootstrapperServer:2553/user/bootstrapper") ! Identify("bootstrapper")
 
   def addNode(name: String, actor: ActorRef): Unit = {
     val node = new Player(name, self)
@@ -49,8 +37,22 @@ class SuperNode extends Actor with ActorLogging {
     peers.values.foreach(_.actor ! PlayerRequest(self, requestSeqNum))
   }
 
+  def init: Receive = {
+    case ActorIdentity("bootstrapper", Some(bootstrapper)) =>
+      log.info("Received identity of bootstrapper: {}.", bootstrapper)
+      bootstrapper ! Register()
 
-  def receive = {
+    case ActorIdentity("bootstrapper", None) =>
+      log.error("Failed to connect to bootstrapper.")
+      context.stop(self)
+
+    case initialPeers: Seq[ActorRef] =>
+      log.info("Received {} initial peers.", initialPeers.length)
+      initialPeers.foreach(_ ! Identify)
+      context.become(connected orElse common)
+  }
+
+  def connected: Receive = {
     /**
      * Receive identity from client node.
      */
@@ -110,4 +112,10 @@ class SuperNode extends Actor with ActorLogging {
 
     case Ready(name, remotes) => nodes.get(name).get._2 forward Ready(name, remotes)
   }
+
+  def common: Receive = {
+    case default => log.warning("Received unexpected message: {}.", default)
+  }
+
+  def receive = init orElse common
 }
