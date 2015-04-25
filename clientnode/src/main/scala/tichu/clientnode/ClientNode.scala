@@ -1,39 +1,23 @@
 package tichu.clientnode
 
 import akka.actor._
-import tichu.ClientMessage.{Accept, SearchingMatch}
-import tichu.LoadBalancerMessage.{InitSN, ReplySNRef}
-import tichu.SuperNodeMessage.{Invite, Join, Ready}
-import tichu.messages.{Login, Subscribe, Shutdown}
+import tichu.supernode._
 
-class ClientNode() extends Actor with ActorLogging {
-  val subscribers = collection.mutable.MutableList[ActorRef]()
-  val bootstrapServer = context.system.settings.config.getString("tichu.bootstrapper-server")
+class ClientNode extends Actor with ActorLogging {
+  val bootstrapperServer = context.system.settings.config.getString("tichu.bootstrapper-server")
   var userName = None: Option[String]
-
-  /**
-   * Initial Stage, to get SN info from LoadBalancer
-   * @param hostname resolvable address of the loadbalancer, must exactly match the config of the supernode
-   * @param port optional port address, defaults to 2663
-   */
-  def init(hostname: String, port: String = "2663"): Unit = {
-    val remote = context.actorSelection(s"akka.tcp://RemoteSystem@$hostname:$port/user/LoadBalancer")
-    remote ! InitSN()
-  }
+  val subscribers = collection.mutable.MutableList[ActorRef]()
 
   /**
    * Join a supernode and identify yourself with it.
-   * @param hostname resolvable address of the supernode, must exactly match the config of the supernode
-   * @param port optional port address, defaults to 2553
    */
-  def join(name: String, hostname: String, port: String = "2553"): Unit = {
-    userName = Some(name)
-    log.info("Attempt to join {}:{} with username {}", hostname, port, name)
-    val remote = context.actorSelection(s"akka.tcp://RemoteSystem@$hostname:$port/user/SuperNode")
-    remote ! Identify(hostname)
+  def contactBootstrapper(): Unit = {
+    log.debug("Contact bootstrapper.")
+    val bootstrapper = context.actorSelection(s"akka.tcp://RemoteSystem@$bootstrapperServer:2553/user/bootstrapper")
+    bootstrapper ! Identify("bootstrapper")
   }
 
-  def receive = connecting orElse common
+  def receive = common
 
   /**
    * Defines common messages that the node can receive regardless of state.
@@ -41,6 +25,7 @@ class ClientNode() extends Actor with ActorLogging {
   def common: Receive = {
     case Shutdown(reason) => context.stop(self)
     case Subscribe(actor) => subscribers += actor
+    case default => log.warning("Received unexpected message: {}", default)
   }
 
   /**
@@ -51,41 +36,41 @@ class ClientNode() extends Actor with ActorLogging {
    * On successful connection we also send a join message to the supernode, which can retrieve our ActorRef through sender().
    * We then also change our state to 'idle' and listen to a new set of messages.
    */
-  def connecting: Receive = {
+  def connecting(): Receive = {
     case Login(name) =>
-      join(name, bsHostName)
+      userName = Some(name)
+      contactBootstrapper()
 
-    case ReplySNRef(actor: ActorRef, hostname: String) =>
-      log.info("ACTOR REF: {}", actor)
-      actor ! Identify(hostname)
-
-    case ActorIdentity(host: String, Some(actorRef)) =>
-      context.become(idle(actorRef) orElse common)
+    case ActorIdentity("bootstrapper", Some(actorRef)) =>
+      log.debug("Received address for super node: {}.", actorRef)
       actorRef ! Join(userName.get)
-      subscribers.foreach(_ ! LoginSuccess(userName.get))
 
-    case ActorIdentity(hostname, None) =>
-      log.error("Could not connect to {}", hostname)
-      subscribers.foreach(_ ! LoginFailure(s"$hostname not reachable"))
+    case ActorIdentity("bootstrapper", None) =>
+      log.error("Could not find bootstrapper.")
+      subscribers.foreach(_ ! LoginFailure("Could not contact bootstrapper."))
+
+    case Welcome(name) =>
+      context.become(idle(sender()) orElse common)
+      subscribers.foreach(_ ! LoginSuccess(name))
+
+    case InvalidUserName(name, reason) =>
+      subscribers.foreach(_ ! LoginFailure(reason))
   }
 
   def idle(superNode: ActorRef): Receive = {
-    case Searching() =>
+    case StartSearching() =>
       superNode ! SearchingMatch(userName.get)
       context.become(searching(superNode) orElse common)
   }
 
   def searching(superNode: ActorRef): Receive = {
     case Invite(name) =>
-      assert(name.equals(userName.get), "Name on invite does not match username.")
       context.become(matched(superNode) orElse common)
       subscribers.foreach(_ ! Invited())
   }
 
   def matched(superNode: ActorRef): Receive = {
     case Accepted() => superNode ! Accept(userName.get)
-    case Ready(name, players) =>
-      assert(name.equals(userName.get), "Name on ready message does not match username.")
-      log.info("match with {}", players)
+    case Ready(name, players) => log.info("match with {}", players)
   }
 }

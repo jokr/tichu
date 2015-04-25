@@ -5,7 +5,7 @@ import akka.actor.ActorRef
 /**
  * Messages passed between frontend clients and the local node.
  */
-package object messages {
+package object clientnode {
 
   /**
    * Tell the client node to shutdown and check out from super node.
@@ -40,7 +40,7 @@ package object messages {
   /**
    * Start Searching for a match.
    */
-  case class Searching()
+  case class StartSearching()
 
   /**
    * Received an invite to a match.
@@ -51,4 +51,9 @@ package object messages {
    * Accepted the invite to a match.
    */
   case class Accepted()
+
+  /**
+   * Declined the invite to a match.
+   */
+  case class Declined()
 }

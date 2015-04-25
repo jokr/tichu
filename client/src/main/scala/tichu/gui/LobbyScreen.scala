@@ -1,6 +1,6 @@
 package tichu.gui
 
-import tichu.clientnode.Searching
+import tichu.clientnode.StartSearching
 
 import scalafx.Includes._
 import scalafx.event.ActionEvent
@@ -58,7 +58,7 @@ class LobbyScreen(userName: String) {
       e: ActionEvent =>
         loadingScreen.visible = true
         visible = false
-        TichuClient.controller ! Searching()
+        TichuClient.controller ! StartSearching()
     }
   }
 

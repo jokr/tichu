@@ -1,9 +1,8 @@
 package akka.dispatch
 
 import java.util.Collections
-import java.util.concurrent.{ThreadFactory, ExecutorService, TimeUnit, AbstractExecutorService}
+import java.util.concurrent.{AbstractExecutorService, ExecutorService, ThreadFactory, TimeUnit}
 
-import akka.dispatch.{ExecutorServiceFactory, ExecutorServiceConfigurator, DispatcherPrerequisites}
 import com.typesafe.config.Config
 
 import scalafx.application.Platform

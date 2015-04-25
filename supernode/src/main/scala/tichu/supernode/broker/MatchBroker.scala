@@ -1,20 +1,8 @@
-package tichu.supernode
+package tichu.supernode.broker
 
 import akka.actor.{Actor, ActorLogging}
-import tichu.ClientMessage.Accept
 import tichu.Player
-import tichu.SuperNodeMessage.AvailablePlayers
-import tichu.supernode.MatchBroker.{AddPlayer, RequestPlayers}
-
-object MatchBroker {
-
-  case class AddPlayer(node: Player)
-
-  case class Accepted(node: Player)
-
-  case class RequestPlayers()
-
-}
+import tichu.supernode.{AvailablePlayers, Accept}
 
 /**
  * This actor tries to collect a number of players for a match and invites them once matched.

@@ -1,12 +1,14 @@
 package tichu
 
 import akka.actor.ActorRef
-import tichu.SuperNodeMessage.{Invite, Ready}
+import tichu.supernode.{Invite, Ready}
 
 sealed trait State
 
 case object Idle extends State
+
 case object Searching extends State
+
 case object Matched extends State
 
 class Player(val name: String, superNode: ActorRef) extends Serializable {

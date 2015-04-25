@@ -3,16 +3,14 @@ package tichu.supernode
 import akka.actor._
 import akka.pattern.ask
 import akka.util.Timeout
-import tichu.ClientMessage.{Accept, SearchingMatch}
 import tichu.Player
-import tichu.SuperNodeMessage.{Join, PlayerRequest, _}
 import tichu.bootstrapper.Register
-import tichu.supernode.MatchBroker.{AddPlayer, RequestPlayers}
+import tichu.supernode.broker.{RequestPlayers, AddPlayer, MatchBroker}
 
 import scala.collection.mutable
-import scala.concurrent.{ExecutionContext, Await}
+import scala.concurrent.Await
+import scala.concurrent.ExecutionContext.Implicits.global
 import scala.concurrent.duration._
-import ExecutionContext.Implicits.global
 
 class SuperNode extends Actor with ActorLogging {
   val bootstrapperServer = context.system.settings.config.getString("tichu.bootstrapper-server")
