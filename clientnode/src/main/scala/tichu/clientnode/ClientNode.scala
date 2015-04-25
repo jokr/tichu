@@ -17,7 +17,7 @@ class ClientNode extends Actor with ActorLogging {
     bootstrapper ! Identify("bootstrapper")
   }
 
-  def receive = common
+  def receive = connecting orElse common
 
   /**
    * Defines common messages that the node can receive regardless of state.

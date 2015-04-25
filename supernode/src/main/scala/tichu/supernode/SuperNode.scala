@@ -34,6 +34,7 @@ class SuperNode extends Actor with ActorLogging {
   def addNode(name: String, actor: ActorRef): Unit = {
     val node = new Player(name, self)
     nodes += (name ->(node, actor))
+    actor ! Welcome(name)
     log.info(s"Registered node $name.")
   }
 
@@ -41,7 +42,6 @@ class SuperNode extends Actor with ActorLogging {
     val peer = new PeerRegistry(hash, actor)
     peers += (hash -> peer)
     log.info(s"Connected peer $hash.")
-
   }
 
   def requestPlayers(): Unit = {
