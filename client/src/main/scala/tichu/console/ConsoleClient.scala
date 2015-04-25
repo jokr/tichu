@@ -1,11 +1,10 @@
-package tichu.ordinarynode
+package tichu.console
 
-import tichu.ordinarynode.InternalMessage.Prompt
+import akka.actor.{ActorDSL, ActorSystem, Props}
+import com.typesafe.config.ConfigFactory
+import tichu.ordinarynode.OrdinaryNode
 
 import scala.concurrent.duration.DurationInt
-
-import akka.actor.{ActorSystem, Props, ActorDSL}
-import com.typesafe.config.ConfigFactory
 
 object ConsoleClient extends App {
   val config = ConfigFactory.load()
@@ -17,7 +16,6 @@ object ConsoleClient extends App {
   def run(): Unit = {
     val node = system.actorOf(Props(classOf[OrdinaryNode]), "ordinaryNode")
     val console = system.actorOf(Props(classOf[ConsoleActor], node), "console")
-    console ! Prompt
 
     import ActorDSL._
 

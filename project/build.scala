@@ -19,6 +19,14 @@ object Build extends Build {
     resolvers += "Akka Snapshot Repository" at "http://repo.akka.io/snapshots/"
   )
 
+  lazy val client = (project in file("client")).settings(commonSettings: _*).settings(
+    name := "Tichu Client",
+    libraryDependencies ++= akkaDependencies,
+    libraryDependencies += "org.scalafx" %% "scalafx" % "8.0.0-R4",
+    libraryDependencies += "org.controlsfx" % "controlsfx" % "8.20.8",
+    resolvers += "Akka Snapshot Repository" at "http://repo.akka.io/snapshots/"
+  ).dependsOn(ordinarynode)
+
   lazy val supernode = (project in file("supernode")).settings(commonSettings: _*).settings(
     name := "Tichu Super Node",
     libraryDependencies ++= akkaDependencies,

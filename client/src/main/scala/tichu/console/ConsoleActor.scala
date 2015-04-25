@@ -1,11 +1,12 @@
-package tichu.ordinarynode
+package tichu.console
 
 import akka.actor.{Actor, ActorLogging, ActorRef, Terminated}
 import tichu.SuperNodeMessage.Join
-import tichu.ordinarynode.InternalMessage._
+import tichu.ordinarynode._
 
 class ConsoleActor(node: ActorRef) extends Actor with ActorLogging {
   val input = io.Source.stdin.getLines()
+  var userName = "Dragon"
 
   context.watch(node)
 
@@ -20,7 +21,7 @@ class ConsoleActor(node: ActorRef) extends Actor with ActorLogging {
   def prompt() = {
     print("tichu$ ")
     val HelpCmd = "help ([A-Za-z0-9]*)".r
-    val JoinCmd = "join ([^\\s]*)".r
+    val JoinCmd = "join".r
     val UserNameCmd = "name ([A-Za-z0-9]+)".r
 
     val command = input.next()
@@ -31,8 +32,8 @@ class ConsoleActor(node: ActorRef) extends Actor with ActorLogging {
         context.stop(self)
       case "search" => node ! Searching()
       case HelpCmd(commandName) => help(commandName)
-      case JoinCmd(hostname) => node ! Join(hostname)
-      case UserNameCmd(userName) => node ! UserName(userName)
+      case JoinCmd() => node ! Join(userName)
+      case UserNameCmd(name) => userName = name
       case _ => help(null)
     }
   }
