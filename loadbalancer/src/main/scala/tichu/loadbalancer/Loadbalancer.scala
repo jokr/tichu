@@ -6,7 +6,7 @@ import akka.actor._
 import com.typesafe.config.ConfigFactory
 import tichu.ClientMessage.{Accept, SearchingMatch}
 import tichu.SuperNodeMessage.{Join, PlayerRequest}
-import tichu.LoadBalancerMessage.{Register,InitSN,Init,ReplySNRef, ReplyAllSN}
+import tichu.LoadBalancerMessage.{Register,InitSN,Init,ReplySNRef, ReplyAllSN, InformSN}
 
 import scala.collection.mutable
 import scala.io.Source
@@ -36,30 +36,27 @@ class LoadBalancer(hostname: String, port: String) extends Actor with ActorLoggi
   private var randomIndex = 0 /* Used for assign SN to Client randomly */
   /**
    * Save registered SuperNode information into local map
-   *
+   *    1. When a new SN register on LoadBalancer, it will inform all registered SN that new SN come 
+   *    2. And it will inform all exsited SN node info to registering SN.
    */
   def addSNNode(name: String, actor: ActorRef): Unit = {
     val answerList = lists.map(_.actorRef).toList
 
     val node = new SuperNodeRegistry(name, actor)
     nodes += (actor.path -> node)
+    val tmp = actor.path
     lists += node
-    log.info(s"Registered SuperNode: $name.")
-    log.info(s"PATH: $actor.path")
-    val tmp = lists.get(0).get
-    val r = tmp.actorRef
-    log.info(s"REF: $r")
-    
-    
-    log.info("REF: {}", answerList)
-
+    log.info(s"A new SN registered ON LoadBalancer: $tmp")
+    /* Reply all exsited SN info to new register SN */
     actor ! ReplyAllSN(answerList)
+
+    /* Inform all exsited SN node, that a new SN has registered on LoadBalancer */
+    answerList.foreach(_! InformSN(actor))
   }
 
   /**
    * Randomly assign a SuperNode to request Ordinary Node 
-   * 
-   *
+   *  
    */
   def assignSN(actor: ActorRef): Unit = {
     /*val node = new NodeRegistry(name, actor)
@@ -71,6 +68,8 @@ class LoadBalancer(hostname: String, port: String) extends Actor with ActorLoggi
     val t = sn.actorRef
     log.info(s"ALLOCATE: $t")
     actor ! ReplySNRef(sn.actorRef, sn.name)
+
+
   }
 
   def receive = {

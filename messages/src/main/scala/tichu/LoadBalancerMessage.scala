@@ -11,5 +11,6 @@ object LoadBalancerMessage {
   final case class Register(hostname: String)
   final case class ReplySNRef(actor:ActorRef, hostname:String)
   final case class ReplyAllSN(answerList: Seq[ActorRef])
+  final case class InformSN(actor:ActorRef)
 
 }

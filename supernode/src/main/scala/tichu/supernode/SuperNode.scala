@@ -8,7 +8,7 @@ import tichu.ClientMessage.{Accept, SearchingMatch}
 
 import tichu.SuperNodeMessage.{Join, PlayerRequest}
 import tichu.supernode.MatchBroker.{Accepted, AddPlayer, RequestPlayers}
-import tichu.LoadBalancerMessage.{Register,ReplyAllSN}
+import tichu.LoadBalancerMessage.{Register,ReplyAllSN, InformSN}
 
 import tichu.Player
 import tichu.SuperNodeMessage._
@@ -60,6 +60,7 @@ class SuperNode(hostname: String, port: String) extends Actor with ActorLogging 
     log.info(s"Registered node $name.")
   }
 
+  
   def connectToPeer(answerList : Seq[ActorRef]): Unit = {
     /*
     val remote = context.actorSelection(s"akka.tcp://RemoteSystem@$host:2553/user/SuperNode") 
@@ -83,12 +84,20 @@ class SuperNode(hostname: String, port: String) extends Actor with ActorLogging 
   }
 
 
+  /* Update new SN connection info */
+  def updateSN(actor: ActorRef): Unit = {
+    var newSNHash = actor.hashCode()
+    actor ! Identify(s"$newSNHash")
+  }
+
+
   def addPeer(hash: String, actor: ActorRef): Unit = {
     val peer = new PeerRegistry(hash, actor)
     peers += (hash -> peer)
     log.info(s"Connected peer $hash.")
 
   }
+
 
   def requestPlayers(): Unit = {
     requestSeqNum += 1
@@ -104,6 +113,10 @@ class SuperNode(hostname: String, port: String) extends Actor with ActorLogging 
       log.info(s"answerList: {}", answerList)
       connectToPeer(answerList)
 
+    /**
+     * When new SN register on Load
+     */
+    case InformSN(actor) => updateSN(actor)
     /**
      * Receive identity from client node.
      */      
