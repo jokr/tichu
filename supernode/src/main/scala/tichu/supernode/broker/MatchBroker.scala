@@ -29,7 +29,7 @@ class MatchBroker(numberOfPlayers: Integer) extends Actor with ActorLogging {
   def sendInvites(): Unit = {
     assert(searchingPlayers.size >= numberOfPlayers, "Tried to send invites without knowing four players.")
     log.debug("Send out invites to players.")
-    searchingPlayers.values.foreach(player => player.matching())
+    searchingPlayers.values.foreach(player => player.matching(self))
   }
 
   override def receive = searching

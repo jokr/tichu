@@ -3,6 +3,7 @@ package tichu.gui
 import javafx.scene.control.{ButtonType, Alert}
 import javafx.scene.control.Alert.AlertType
 
+import akka.actor.ActorRef
 import org.controlsfx.dialog.Dialogs
 import tichu.clientnode.{Declined, Accepted, Shutdown}
 
@@ -49,16 +50,16 @@ object Window extends JFXApp {
     stage.scene = new LobbyScreen(userName).screen
   }
 
-  def showInvite() = {
+  def showInvite(broker: ActorRef) = {
     val alert = new Alert(AlertType.CONFIRMATION)
     alert.setTitle("Match is ready!")
     alert.setContentText("Do you want to play?")
 
     val result = alert.showAndWait()
     if(result.get() == ButtonType.OK) {
-      TichuClient.controller ! Accepted()
+      broker ! Accepted()
     } else {
-      TichuClient.controller ! Declined()
+      broker ! Declined()
     }
   }
 }

@@ -21,10 +21,10 @@ class Player(val name: String, superNode: ActorRef) extends Serializable {
     state = Searching
   }
 
-  def matching(): Unit = {
+  def matching(broker: ActorRef): Unit = {
     assert(state.equals(Searching), "Must be in searching state to be matched.")
     state = Matched
-    superNode ! Invite(name)
+    superNode.tell(Invite(name), broker)
   }
 
   def accepted(): Unit = {

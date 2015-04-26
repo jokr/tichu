@@ -18,7 +18,7 @@ class TichuGui(controller: ActorRef) extends Actor with ActorLogging {
   }
 
   def lobby: Receive = {
-    case Invited() => Window.showInvite()
+    case Invited() => Window.showInvite(sender())
   }
 
   def common: Receive = {
