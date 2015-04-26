@@ -12,7 +12,7 @@ class SuperNode extends Actor with ActorLogging {
   private val broker: ActorRef = context.actorOf(Props(classOf[MatchBroker], 2), "Broker")
 
   private val nodes = mutable.Map[String, (Player, ActorRef)]()
-  private val peers = mutable.Map[String, PeerRegistry]()
+  private val peers = mutable.Set[ActorRef]()
 
   private var requestSeqNum = 0
   private val answeredRequests = mutable.Set[(ActorPath, Int)]()
@@ -26,15 +26,9 @@ class SuperNode extends Actor with ActorLogging {
     log.info(s"Registered node $name.")
   }
 
-  def addPeer(hash: String, actor: ActorRef): Unit = {
-    val peer = new PeerRegistry(hash, actor)
-    peers += (hash -> peer)
-    log.info(s"Connected peer $hash.")
-  }
-
   def requestPlayers(): Unit = {
     requestSeqNum += 1
-    peers.values.foreach(_.actor ! PlayerRequest(self, requestSeqNum))
+    peers.foreach(_ ! PlayerRequest(self, requestSeqNum))
   }
 
   def init: Receive = {
@@ -46,10 +40,10 @@ class SuperNode extends Actor with ActorLogging {
       log.error("Failed to connect to bootstrapper.")
       context.stop(self)
 
-    case initialPeers: Seq[ActorRef @unchecked] =>
+    case initialPeers: Seq[ActorRef@unchecked] =>
       log.info("Received {} initial peers.", initialPeers.length)
-      initialPeers.foreach(_ ! Identify)
       context.become(connected orElse common)
+      initialPeers.foreach(_ ! Identify("peer"))
   }
 
   def connected: Receive = {
@@ -61,7 +55,14 @@ class SuperNode extends Actor with ActorLogging {
     /**
      * Receive identity from peer node.
      */
-    case ActorIdentity(hash: String, Some(actorRef)) => addPeer(hash, actorRef)
+    case ActorIdentity("peer", Some(peer)) =>
+      peers += peer
+      peer ! ActorIdentity("peerHi", Some(self))
+      log.info("Connected with peer {}.", peer)
+
+    case ActorIdentity("peerHi", Some(peer)) =>
+      peers += peer
+      log.info("Connected with peer {}.", peer)
 
     /**
      * Peer node not found.
