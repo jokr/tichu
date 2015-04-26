@@ -1,4 +1,4 @@
-package tichu.gui
+package tichu.view
 
 import javafx.embed.swing.JFXPanel
 

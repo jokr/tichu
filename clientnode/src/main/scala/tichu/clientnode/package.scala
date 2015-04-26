@@ -1,6 +1,7 @@
 package tichu
 
 import akka.actor.ActorRef
+import tichu.model.Player
 
 /**
  * Messages passed between frontend clients and the local node.
@@ -45,15 +46,17 @@ package object clientnode {
   /**
    * Received an invite to a match.
    */
-  case class Invited()
+  case class Invited(broker: ActorRef)
 
   /**
    * Accepted the invite to a match.
    */
-  case class Accepted()
+  case class Accepted(broker: ActorRef)
 
   /**
    * Declined the invite to a match.
    */
-  case class Declined()
+  case class Declined(broker: ActorRef)
+
+  case class MatchReady(players: Seq[Player])
 }

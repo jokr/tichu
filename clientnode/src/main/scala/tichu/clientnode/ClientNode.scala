@@ -18,21 +18,10 @@ class ClientNode extends Actor with ActorLogging {
     bootstrapper ! Identify("bootstrapper")
   }
 
-  def receive = connecting orElse common
-
-  /**
-   * Defines common messages that the node can receive regardless of state.
-   */
-  def common: Receive = {
-    case Shutdown(reason) => context.stop(self)
-    case Subscribe(actor) => subscribers += actor
-    case default => log.warning("Received unexpected message: {}", default)
-  }
-
   /**
    * Messages for the node while in the connecting phase. It listens to two messages:
    * * Join, the command received from the client (e.g. console) telling the node to contact a supernode
-   * * ActorIdentity, the response from a supernode on sucessful connection. Contains the ActorRef we need to store.
+   * * ActorIdentity, the response from a supernode on successful connection. Contains the ActorRef we need to store.
    *
    * On successful connection we also send a join message to the supernode, which can retrieve our ActorRef through sender().
    * We then also change our state to 'idle' and listen to a new set of messages.
@@ -63,27 +52,50 @@ class ClientNode extends Actor with ActorLogging {
       subscribers.foreach(_ ! LoginFailure("Could not contact supernode."))
 
     case Welcome(name) =>
-      context.become(idle(sender()) orElse common)
+      context.become(idle(sender()) orElse common(Some(sender())))
       subscribers.foreach(_ ! LoginSuccess(name))
 
     case InvalidUserName(name, reason) =>
       subscribers.foreach(_ ! LoginFailure(reason))
   }
 
-  def idle(superNode: ActorRef): Receive = {
+  def receive = connecting orElse common(None)
+
+  def idle(superNode: ActorRef): Receive = idleMessages(superNode) orElse common(Some(superNode))
+
+  def searching(superNode: ActorRef): Receive = searchingMessages(superNode) orElse common(Some(superNode))
+
+  def matched(superNode: ActorRef): Receive = matchedMessages(superNode) orElse common(Some(superNode))
+
+  def idleMessages(superNode: ActorRef): Receive = {
     case StartSearching() =>
       superNode ! SearchingMatch(userName.get)
-      context.become(searching(superNode) orElse common)
+      context.become(searching(superNode))
   }
 
-  def searching(superNode: ActorRef): Receive = {
+  def searchingMessages(superNode: ActorRef): Receive = {
     case Invite(name) =>
-      context.become(matched(superNode) orElse common)
-      subscribers.foreach(_ ! Invited())
+      assert(name.equals(userName.get))
+      context.become(matched(superNode))
+      subscribers.foreach(_ ! Invited(sender()))
   }
 
-  def matched(superNode: ActorRef): Receive = {
-    case Accepted() => superNode ! Accept(userName.get)
-    case Ready(name, players) => log.info("match with {}", players)
+  def matchedMessages(superNode: ActorRef): Receive = {
+    case Accepted(broker) => broker ! Accept(userName.get)
+    case Declined(broker) => broker ! Decline(userName.get)
+    case Ready(name, players) =>
+      assert(name.equals(userName.get))
+      log.info("Match with {}", players.map(_._1))
+  }
+
+  /**
+   * Defines common messages that the node can receive regardless of state.
+   */
+  def common(superNode: Option[ActorRef]): Receive = {
+    case Shutdown(reason) =>
+      if (superNode.isDefined) superNode.get ! Leave(userName.get)
+      context.stop(self)
+    case Subscribe(actor) => subscribers += actor
+    case default => log.warning("Received unexpected message: {}", default)
   }
 }
