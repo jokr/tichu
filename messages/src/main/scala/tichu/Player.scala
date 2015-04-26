@@ -11,7 +11,7 @@ case object Searching extends State
 
 case object Matched extends State
 
-class Player(val name: String, superNode: ActorRef, actor: ActorRef) extends Serializable {
+class Player(val name: String, superNode: ActorRef) extends Serializable {
   def isSearching: Boolean = state.equals(Searching)
 
   var state: State = Idle
@@ -24,7 +24,7 @@ class Player(val name: String, superNode: ActorRef, actor: ActorRef) extends Ser
   def matching(): Unit = {
     assert(state.equals(Searching), "Must be in searching state to be matched.")
     state = Matched
-    actor ! Invite()
+    superNode ! Invite(name)
   }
 
   def accepted(): Unit = {

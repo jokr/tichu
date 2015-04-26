@@ -20,7 +20,7 @@ class SuperNode extends Actor with ActorLogging {
   context.actorSelection(s"akka.tcp://RemoteSystem@$bootstrapperServer:2553/user/bootstrapper") ! Identify("bootstrapper")
 
   def addNode(name: String, actor: ActorRef): Unit = {
-    val node = new Player(name, self, sender())
+    val node = new Player(name, self)
     nodes += (name ->(node, actor))
     actor ! Welcome(name)
     log.info(s"Registered node $name.")
@@ -42,11 +42,13 @@ class SuperNode extends Actor with ActorLogging {
 
     case initialPeers: Seq[ActorRef@unchecked] =>
       log.info("Received {} initial peers.", initialPeers.length)
-      context.become(connected orElse common)
+      context.become(connected)
       initialPeers.foreach(_ ! Identify("peer"))
   }
 
-  def connected: Receive = {
+  def connected: Receive = supernode orElse forward orElse common
+
+  def supernode: Receive = {
     /**
      * Receive identity from client node.
      */
@@ -67,17 +69,13 @@ class SuperNode extends Actor with ActorLogging {
     /**
      * Peer node not found.
      */
-    case ActorIdentity(hash, None) => log.error("Could not connect to {}", hash)
+    case ActorIdentity("peer", None) => log.error("Could not connect to peer.")
+
     case SearchingMatch(name) =>
       val node = nodes.get(name).get._1
       log.debug("{} is searching for a match.", name)
       node.searching()
       broker ! AddPlayer(node)
-
-    /**
-     * Client node accepts the invite.
-     */
-    case Accept(name) => broker forward Accept(name)
 
     /**
      * Broker requests more players. Broadcast to peers.
@@ -107,8 +105,20 @@ class SuperNode extends Actor with ActorLogging {
      * Receive available players from peer.
      */
     case AvailablePlayers(players) => broker forward AvailablePlayers(players)
+  }
 
-    case Ready(name, remotes) => nodes.get(name).get._2 forward Ready(name, remotes)
+  def forward: Receive = {
+    case Invite(userName) => forwardToNode(userName, Invite(userName))
+    case Ready(userName, players) => forwardToNode(userName, Ready(userName, players))
+  }
+
+  def forwardToNode(userName: String, message: AnyRef) = {
+    val node = nodes.get(userName)
+    if (node.isDefined) {
+      node.get._2 forward message
+    } else {
+      log.warning("No node with the name {} registered.", userName)
+    }
   }
 
   def common: Receive = {
