@@ -85,7 +85,7 @@ class ClientNode extends Actor with ActorLogging {
     case Declined(broker) => broker ! Decline(userName.get)
     case Ready(name, players) =>
       assert(name.equals(userName.get))
-      log.info("match with {}", players)
+      log.info("Match with {}", players.map(_._1))
   }
 
   /**

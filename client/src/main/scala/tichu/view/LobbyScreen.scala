@@ -1,4 +1,4 @@
-package tichu.gui
+package tichu.view
 
 import tichu.clientnode.StartSearching
 
