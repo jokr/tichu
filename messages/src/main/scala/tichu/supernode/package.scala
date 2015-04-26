@@ -5,6 +5,8 @@ import akka.actor.ActorRef
 package object supernode {
   final case class Join(userName: String)
 
+  final case class Leave(userName: String)
+
   final case class Welcome(userName: String)
 
   final case class InvalidUserName(userName: String, reason: String)

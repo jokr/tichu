@@ -1,6 +1,7 @@
 package tichu.supernode
 
 import akka.actor._
+import akka.remote.DisassociatedEvent
 import tichu.Player
 import tichu.bootstrapper.Register
 import tichu.supernode.broker.{AddPlayer, MatchBroker, RequestPlayers}
@@ -18,12 +19,26 @@ class SuperNode extends Actor with ActorLogging {
   private val answeredRequests = mutable.Set[(ActorPath, Int)]()
 
   context.actorSelection(s"akka.tcp://RemoteSystem@$bootstrapperServer:2553/user/bootstrapper") ! Identify("bootstrapper")
+  context.system.eventStream.subscribe(self, classOf[DisassociatedEvent])
 
   def addNode(name: String, actor: ActorRef): Unit = {
     val node = new Player(name, self)
     nodes += (name ->(node, actor))
     actor ! Welcome(name)
     log.info(s"Registered node $name.")
+  }
+
+  def removeNode(name: String): Unit = {
+    val node = nodes.remove(name)
+    if (node.isDefined) log.info("Removed node {}.", name)
+  }
+
+  def removeNode(address: Address): Unit = {
+    val node = nodes.find(entry => entry._2._2.path.address.equals(address))
+    if (node.isDefined) {
+      nodes.remove(node.get._1)
+      log.info("Removed node {}.", node.get._1)
+    }
   }
 
   def requestPlayers(): Unit = {
@@ -53,6 +68,8 @@ class SuperNode extends Actor with ActorLogging {
      * Receive identity from client node.
      */
     case Join(name) => addNode(name, sender())
+
+    case Leave(name) => removeNode(name)
 
     /**
      * Receive identity from peer node.
@@ -105,6 +122,8 @@ class SuperNode extends Actor with ActorLogging {
      * Receive available players from peer.
      */
     case AvailablePlayers(players) => broker forward AvailablePlayers(players)
+
+    case DisassociatedEvent(local, remote, true) => removeNode(remote)
   }
 
   def forward: Receive = {
