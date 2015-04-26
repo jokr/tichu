@@ -1,8 +1,7 @@
 package tichu.bootstrapper
 
-import akka.actor.{Actor, ActorLogging, ActorRef}
+import akka.actor.{Actor, ActorLogging, ActorRef, Address}
 import akka.remote.DisassociatedEvent
-import akka.remote.transport.AssociationHandle.Disassociated
 
 import scala.collection.mutable
 import scala.util.Random
@@ -16,6 +15,11 @@ class Bootstrapper() extends Actor with ActorLogging {
   def addNode(node: ActorRef) = {
     log.info("Added super node: {}.", node)
     nodes.enqueue(node)
+  }
+
+  def removeNode(remote: Address) = {
+    val node = nodes.dequeueFirst(ref => ref.path.address.equals(remote))
+    if (node.isDefined) log.info("Remove node: {}.", node.get)
   }
 
   def peers(): Seq[ActorRef] = {
@@ -34,7 +38,7 @@ class Bootstrapper() extends Actor with ActorLogging {
     case Register() =>
       sender() ! peers()
       addNode(sender())
-    case Disassociated(info) => log.warning("{}", info)
+    case DisassociatedEvent(local, remote, true) => removeNode(remote)
     case default => log.warning("Received unexpected message: {}", default)
   }
 }
