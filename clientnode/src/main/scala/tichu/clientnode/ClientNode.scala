@@ -13,7 +13,7 @@ class ClientNode extends Actor with ActorLogging {
    * Join a supernode and identify yourself with it.
    */
   def contactBootstrapper(): Unit = {
-    log.debug("Contact bootstrapper.")
+    log.info("Contact bootstrapper.")
     val bootstrapper = context.actorSelection(s"akka.tcp://RemoteSystem@$bootstrapperServer:2553/user/bootstrapper")
     bootstrapper ! Identify("bootstrapper")
   }
@@ -32,7 +32,7 @@ class ClientNode extends Actor with ActorLogging {
       contactBootstrapper()
 
     case ActorIdentity("bootstrapper", Some(bootstrapper)) =>
-      log.debug("Received address for bootstrapper: {}.", bootstrapper)
+      log.info("Received address for bootstrapper: {}.", bootstrapper)
       bootstrapper ! Request()
 
     case ActorIdentity("bootstrapper", None) =>
@@ -40,11 +40,11 @@ class ClientNode extends Actor with ActorLogging {
       subscribers.foreach(_ ! LoginFailure("Could not contact bootstrapper."))
 
     case superNode: ActorRef =>
-      log.debug("Received path for supernode: {}.", superNode)
+      log.info("Received path for supernode: {}.", superNode)
       superNode ! Identify("supernode")
 
     case ActorIdentity("supernode", Some(superNode)) =>
-      log.debug("Received address for supernode: {}.", superNode)
+      log.info("Received address for supernode: {}.", superNode)
       superNode ! Join(userName.get)
 
     case ActorIdentity("supernode", None) =>
@@ -86,6 +86,7 @@ class ClientNode extends Actor with ActorLogging {
     case Ready(name, players) =>
       assert(name.equals(userName.get))
       log.info("Match with {}", players.map(_._1))
+      subscribers.foreach(_ ! MatchReady(Seq()))
   }
 
   /**

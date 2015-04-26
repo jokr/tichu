@@ -104,7 +104,7 @@ class SuperNode extends Actor with ActorLogging {
 
     case SearchingMatch(name) =>
       if (players.contains(name)) {
-        log.debug("{} is searching for a match.", name)
+        log.info("{} is searching for a match.", name)
         addSearchingPlayers(Seq((name, self)), request = true)
       } else {
         log.warning("Received message from unknown node: {}.", name)
@@ -138,16 +138,16 @@ class SuperNode extends Actor with ActorLogging {
      */
     case PlayerRequest(origin, seqNum) =>
       if (!answeredRequests.contains((origin.path, seqNum))) {
-        log.debug("Answer request for players.")
+        log.info("Answer request for players.")
         answeredRequests.add((origin.path, seqNum))
         if (searchingPlayers.isEmpty) {
-          log.debug("No available players.")
+          log.info("No available players.")
         } else {
-          log.debug("{} available players.", searchingPlayers.size)
+          log.info("{} available players.", searchingPlayers.size)
           origin ! AvailablePlayers(searchingPlayers.toSeq)
         }
       } else {
-        log.debug("Received a player request that we already answered.")
+        log.info("Received a player request that we already answered.")
       }
 
     /**
