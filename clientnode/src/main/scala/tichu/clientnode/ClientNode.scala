@@ -77,7 +77,7 @@ class ClientNode extends Actor with ActorLogging {
     case Invite(name) =>
       assert(name.equals(userName.get))
       context.become(matched(superNode))
-      subscribers.foreach(_ ! Invited())
+      subscribers.foreach(_ ! Invited(sender()))
   }
 
   def matchedMessages(superNode: ActorRef): Receive = {

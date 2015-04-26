@@ -45,7 +45,7 @@ package object clientnode {
   /**
    * Received an invite to a match.
    */
-  case class Invited()
+  case class Invited(broker: ActorRef)
 
   /**
    * Accepted the invite to a match.

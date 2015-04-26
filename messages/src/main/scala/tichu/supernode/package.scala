@@ -17,11 +17,11 @@ package object supernode {
 
   final case class Accept(userName: String)
 
-  final case class Decline()
+  final case class Decline(userName: String)
 
-  final case class Ready(userName: String, remotes: Seq[Player])
+  final case class Ready(userName: String, remotes: Seq[(String, ActorRef)])
 
   final case class PlayerRequest(origin: ActorRef, seqNum: Int)
 
-  final case class AvailablePlayers(players: Seq[Player])
+  final case class AvailablePlayers(players: Seq[(String, ActorRef)])
 }

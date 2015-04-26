@@ -2,17 +2,19 @@ package tichu.supernode
 
 import akka.actor._
 import akka.remote.DisassociatedEvent
-import tichu.Player
 import tichu.bootstrapper.Register
-import tichu.supernode.broker.{AddPlayer, MatchBroker, RequestPlayers}
 
 import scala.collection.mutable
 
 class SuperNode extends Actor with ActorLogging {
   val bootstrapperServer = context.system.settings.config.getString("tichu.bootstrapper-server")
-  private val broker: ActorRef = context.actorOf(Props(classOf[MatchBroker], 2), "Broker")
 
-  private val nodes = mutable.Map[String, (Player, ActorRef)]()
+  private val players = mutable.Map[String, ActorRef]()
+
+  private var searchingPlayers = mutable.Set[(String, ActorRef)]()
+
+  private var acceptedPlayers = mutable.Set[(String, ActorRef)]()
+
   private val peers = mutable.Set[ActorRef]()
 
   private var requestSeqNum = 0
@@ -21,22 +23,25 @@ class SuperNode extends Actor with ActorLogging {
   context.actorSelection(s"akka.tcp://RemoteSystem@$bootstrapperServer:2553/user/bootstrapper") ! Identify("bootstrapper")
   context.system.eventStream.subscribe(self, classOf[DisassociatedEvent])
 
+  def invitesReady = searchingPlayers.size >= 2
+
+  def matchReady = acceptedPlayers.size >= 2
+
   def addNode(name: String, actor: ActorRef): Unit = {
-    val node = new Player(name, self)
-    nodes += (name ->(node, actor))
+    players += name -> actor
     actor ! Welcome(name)
     log.info(s"Registered node $name.")
   }
 
   def removeNode(name: String): Unit = {
-    val node = nodes.remove(name)
+    val node = players.remove(name)
     if (node.isDefined) log.info("Removed node {}.", name)
   }
 
   def removeNode(address: Address): Unit = {
-    val node = nodes.find(entry => entry._2._2.path.address.equals(address))
+    val node = players.find(entry => entry._2.path.address.equals(address))
     if (node.isDefined) {
-      nodes.remove(node.get._1)
+      players.remove(node.get._1)
       log.info("Removed node {}.", node.get._1)
     }
   }
@@ -44,6 +49,15 @@ class SuperNode extends Actor with ActorLogging {
   def requestPlayers(): Unit = {
     requestSeqNum += 1
     peers.foreach(_ ! PlayerRequest(self, requestSeqNum))
+  }
+
+  def addSearchingPlayers(searching: Seq[(String, ActorRef)], request: Boolean): Unit = {
+    searchingPlayers ++= searching
+    if (invitesReady) {
+      searchingPlayers.foreach(p => p._2 ! Invite(p._1))
+    } else if (request) {
+      requestPlayers()
+    }
   }
 
   def init: Receive = {
@@ -89,15 +103,35 @@ class SuperNode extends Actor with ActorLogging {
     case ActorIdentity("peer", None) => log.error("Could not connect to peer.")
 
     case SearchingMatch(name) =>
-      val node = nodes.get(name).get._1
-      log.debug("{} is searching for a match.", name)
-      node.searching()
-      broker ! AddPlayer(node)
+      if (players.contains(name)) {
+        log.debug("{} is searching for a match.", name)
+        addSearchingPlayers(Seq((name, self)), request = true)
+      } else {
+        log.warning("Received message from unknown node: {}.", name)
+      }
 
-    /**
-     * Broker requests more players. Broadcast to peers.
-     */
-    case RequestPlayers() => requestPlayers()
+    case Accept(name) =>
+      val player = searchingPlayers.find(p => p._1.equals(name))
+
+      if (player.isDefined) {
+        log.info("{} accepted the match.", name)
+        acceptedPlayers += player.get
+        if (matchReady) {
+          log.info("Match is ready with: {}.", acceptedPlayers.map(_._1))
+          acceptedPlayers.foreach(p => p._2 ! Ready(name, acceptedPlayers.toSeq))
+          searchingPlayers = searchingPlayers.filterNot(p => acceptedPlayers.contains(p))
+        }
+      } else {
+        log.warning("Received accept from unknown player: {}.", name)
+      }
+
+    case Decline(name) =>
+      val player = searchingPlayers.find(p => p._1.equals(name))
+      if (player.isDefined) {
+        searchingPlayers.remove(player.get)
+      } else {
+        log.warning("Received decline from unknown player: {}.", name)
+      }
 
     /**
      * Receive a request for players from another supernode.
@@ -106,13 +140,11 @@ class SuperNode extends Actor with ActorLogging {
       if (!answeredRequests.contains((origin.path, seqNum))) {
         log.debug("Answer request for players.")
         answeredRequests.add((origin.path, seqNum))
-        val availablePlayers = nodes.values.filter(node => node._1.isSearching).map(_._1).toSeq
-
-        if (availablePlayers.isEmpty) {
+        if (searchingPlayers.isEmpty) {
           log.debug("No available players.")
         } else {
-          log.debug("{} available players.", availablePlayers.length)
-          origin ! AvailablePlayers(availablePlayers)
+          log.debug("{} available players.", searchingPlayers.size)
+          origin ! AvailablePlayers(searchingPlayers.toSeq)
         }
       } else {
         log.debug("Received a player request that we already answered.")
@@ -121,20 +153,22 @@ class SuperNode extends Actor with ActorLogging {
     /**
      * Receive available players from peer.
      */
-    case AvailablePlayers(players) => broker forward AvailablePlayers(players)
+    case AvailablePlayers(availablePlayers) => addSearchingPlayers(availablePlayers, request = false)
 
     case DisassociatedEvent(local, remote, true) => removeNode(remote)
   }
 
   def forward: Receive = {
-    case Invite(userName) => forwardToNode(userName, Invite(userName))
-    case Ready(userName, players) => forwardToNode(userName, Ready(userName, players))
+    case Invite(userName) =>
+      forwardToNode(userName, Invite(userName))
+    case Ready(userName, matchedPlayers) =>
+      forwardToNode(userName, Ready(userName, matchedPlayers))
   }
 
   def forwardToNode(userName: String, message: AnyRef) = {
-    val node = nodes.get(userName)
+    val node = players.get(userName)
     if (node.isDefined) {
-      node.get._2 forward message
+      node.get forward message
     } else {
       log.warning("No node with the name {} registered.", userName)
     }
