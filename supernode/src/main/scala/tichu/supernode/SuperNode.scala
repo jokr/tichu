@@ -118,7 +118,7 @@ class SuperNode extends Actor with ActorLogging {
         acceptedPlayers += player.get
         if (matchReady) {
           log.info("Match is ready with: {}.", acceptedPlayers.map(_._1))
-          acceptedPlayers.foreach(p => p._2 ! Ready(name, acceptedPlayers.toSeq))
+          acceptedPlayers.foreach(p => p._2 ! Ready(p._1, acceptedPlayers.toSeq))
           searchingPlayers = searchingPlayers.filterNot(p => acceptedPlayers.contains(p))
         }
       } else {
@@ -155,7 +155,6 @@ class SuperNode extends Actor with ActorLogging {
      */
     case AvailablePlayers(availablePlayers) =>
       log.info("Received {} available players from {}.", availablePlayers.length, sender())
-      log.info("DEBUG: {}", availablePlayers)
       addSearchingPlayers(availablePlayers, request = false)
 
     case DisassociatedEvent(local, remote, true) => removeNode(remote)
