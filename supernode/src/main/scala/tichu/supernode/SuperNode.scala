@@ -153,7 +153,10 @@ class SuperNode extends Actor with ActorLogging {
     /**
      * Receive available players from peer.
      */
-    case AvailablePlayers(availablePlayers) => addSearchingPlayers(availablePlayers, request = false)
+    case AvailablePlayers(availablePlayers) =>
+      log.info("Received {} available players from {}.", availablePlayers.length, sender())
+      log.info("DEBUG: {}", availablePlayers)
+      addSearchingPlayers(availablePlayers, request = false)
 
     case DisassociatedEvent(local, remote, true) => removeNode(remote)
   }
@@ -165,12 +168,13 @@ class SuperNode extends Actor with ActorLogging {
       forwardToNode(userName, Ready(userName, matchedPlayers))
   }
 
-  def forwardToNode(userName: String, message: AnyRef) = {
+  def forwardToNode(userName: String, message: Any) = {
     val node = players.get(userName)
     if (node.isDefined) {
+      log.info("Forwarding: Send {} to {}", message, userName)
       node.get forward message
     } else {
-      log.warning("No node with the name {} registered.", userName)
+      log.warning("Forwarding: No node with the name {} registered.", userName)
     }
   }
 
