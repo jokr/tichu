@@ -57,9 +57,9 @@ object Window extends JFXApp {
 
     val result = alert.showAndWait()
     if(result.get() == ButtonType.OK) {
-      broker ! Accepted()
+      TichuClient.controller ! Accepted(broker)
     } else {
-      broker ! Declined()
+      TichuClient.controller ! Declined(broker)
     }
   }
 }

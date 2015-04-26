@@ -50,10 +50,10 @@ package object clientnode {
   /**
    * Accepted the invite to a match.
    */
-  case class Accepted()
+  case class Accepted(broker: ActorRef)
 
   /**
    * Declined the invite to a match.
    */
-  case class Declined()
+  case class Declined(broker: ActorRef)
 }

@@ -81,7 +81,8 @@ class ClientNode extends Actor with ActorLogging {
   }
 
   def matchedMessages(superNode: ActorRef): Receive = {
-    case Accepted() => superNode ! Accept(userName.get)
+    case Accepted(broker) => broker ! Accept(userName.get)
+    case Declined(broker) => broker ! Decline(userName.get)
     case Ready(name, players) =>
       assert(name.equals(userName.get))
       log.info("match with {}", players)
