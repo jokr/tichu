@@ -87,10 +87,9 @@ class ClientNode extends Actor with ActorLogging {
     case Declined(broker) => broker ! Decline(userName.get)
     case Ready(name, players) =>
       assert(name.equals(userName.get))
-      log.info("Match with {}", players.map(_._1))
-
       val game = context.actorOf(Props(classOf[Game], userName.get, players))
       context.become(playing(superNode, game))
+      log.info("Match with {}", players.map(_._1))
   }
 
   def playingMessages(superNode: ActorRef, game: ActorRef): Receive = {

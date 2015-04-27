@@ -149,6 +149,11 @@ class GameScreen(me: Me, players: Seq[Other]) {
       strokeWidth = 3.0
       arcHeight = 10
       arcWidth = 10
+
+      effect = new InnerShadow {
+        color = Color.BLACK
+        choke = 0.5
+      }
     }
 
     def backgroundColor = card match {
@@ -156,6 +161,7 @@ class GameScreen(me: Me, players: Seq[Other]) {
       case RegularCard(Suit.Sword, value) => Color.DARKGREY
       case RegularCard(Suit.Pagoda, value) => Color.SKYBLUE
       case RegularCard(Suit.Star, value) => Color.LIGHTPINK
+      case card: SpecialCard => Color.BLUEVIOLET
     }
 
     def select() = {
@@ -178,7 +184,7 @@ class GameScreen(me: Me, players: Seq[Other]) {
                 case RegularCard(Suit.Jade, value) => new Image("jade.png")
                 case RegularCard(Suit.Sword, value) => new Image("sword.png")
                 case RegularCard(Suit.Pagoda, value) => new Image("pagoda.png")
-                case RegularCard(Suit.Star, value) => new Image("star.png")
+                case _ => new Image("star.png")
               }
             },
             new Text {

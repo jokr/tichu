@@ -18,8 +18,8 @@ class Game(myName: String, playerRefs: Seq[(String, ActorRef)]) extends Actor wi
     val me = new Me(myName, others.head, context.parent)
     log.info("My team mate is {}.", others.head.userName)
     others.head.superNode ! Partner(others.head.userName, myName, others(1).userName, others(2).userName)
-    others(1).superNode ! Partner(others.head.userName, others(2).userName, others.head.userName, myName)
-    others(2).superNode ! Partner(others.head.userName, others(1).userName, myName, others.head.userName)
+    others(1).superNode ! Partner(others(1).userName, others(2).userName, others.head.userName, myName)
+    others(2).superNode ! Partner(others(2).userName, others(1).userName, myName, others.head.userName)
     log.info("Our opponents are {}.", others.drop(1).map(_.userName))
     context.become(setup(me, others) orElse common, discardOld = true)
     log.info("Deal hands.")
@@ -42,12 +42,13 @@ class Game(myName: String, playerRefs: Seq[(String, ActorRef)]) extends Actor wi
   def setup(me: Me, others: Seq[Other]): Receive = {
     case Hand(`myName`, hand) =>
       me.cards = hand
-      context.become(exchange(me, others) orElse common, discardOld = true)
       if (hand.contains(MahJong())) {
         log.info("I have the Mah Jong!")
         others.foreach(p => p.superNode ! HasMahJong(p.userName, myName))
         context.system.eventStream.publish(ActivePlayer(me))
         context.become(game(me, others) orElse common)
+      } else {
+        context.become(exchange(me, others) orElse common, discardOld = true)
       }
       context.system.eventStream.publish(GameReady(me, others))
   }
