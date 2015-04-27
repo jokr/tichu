@@ -6,7 +6,7 @@ import tichu.clientnode._
 class TichuGui(controller: ActorRef) extends Actor with ActorLogging {
   context.watch(controller)
 
-  controller ! Subscribe(self)
+  context.system.eventStream.subscribe(self, classOf[GUIEvent])
 
   def login: Receive = {
     case LoginSuccess(userName) =>
@@ -19,7 +19,7 @@ class TichuGui(controller: ActorRef) extends Actor with ActorLogging {
 
   def lobby: Receive = {
     case Invited(broker) => Window.showInvite(broker)
-    case MatchReady(players) =>
+    case GameReady(gameModel) =>
       Window.gameScreen()
       context.become(game orElse common)
   }

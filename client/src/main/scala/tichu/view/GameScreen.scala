@@ -87,12 +87,12 @@ class GameScreen(me: Me, players: Seq[Other]) {
             content = Seq(
               new Button {
                 text = "Submit"
-                disable = !me.isActive
+                disable = true
                 maxWidth = Double.MaxValue
               },
               new Button {
                 text = "Pass"
-                disable = !me.isActive
+                disable = true
                 maxWidth = Double.MaxValue
               }
             )
@@ -206,7 +206,7 @@ class GameScreen(me: Me, players: Seq[Other]) {
             arcHeight = 30
             arcWidth = 30
 
-            if (player.teamMate) {
+            if (me.teamMate.equals(player)) {
               stroke = Color.GREEN
             } else {
               stroke = Color.RED
@@ -217,14 +217,14 @@ class GameScreen(me: Me, players: Seq[Other]) {
             font = Font.font("Calibri", FontWeight.BOLD, 36)
             strokeWidth = 10
             alignment = Pos.CENTER
-            if (player.teamMate) {
+            if (me.teamMate.equals(player)) {
               fill = Color.GREEN
             } else {
               fill = Color.RED
             }
           }
         )
-        if (player.isActive) {
+        if (true) {
           content = icon :+ new ImageView {
             image = new Image("goldstar.png")
             preserveRatio = true
@@ -240,7 +240,7 @@ class GameScreen(me: Me, players: Seq[Other]) {
         font = Font.font("Calibri", 26)
         strokeWidth = 10
         alignment = Pos.CENTER
-        if (player.teamMate) {
+        if (me.teamMate.equals(player)) {
           fill = Color.GREEN
         } else {
           fill = Color.RED
