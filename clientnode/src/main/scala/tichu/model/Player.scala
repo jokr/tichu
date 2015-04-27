@@ -33,7 +33,10 @@ class Me(val userName: String, val teamMate: Other, val game: ActorRef) extends 
 
   override def done() = hand.isEmpty
 
-  def winTrick(cards: Seq[Card]) = tricks = tricks ++ cards
+  def winTrick(cards: Seq[Card]) = tricks = {
+    tricks ++ cards
+    lastPlayed = Seq()
+  }
 }
 
 class Other(val userName: String, val superNode: ActorRef) extends Player() {

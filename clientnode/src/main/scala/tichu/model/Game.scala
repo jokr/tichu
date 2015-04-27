@@ -81,6 +81,7 @@ class Game(myName: String, playerRefs: Seq[(String, ActorRef)]) extends Actor wi
         me.winTrick(tkn.clear())
         log.info("I have the following tricks: {}.", me.tricks)
         others.foreach(p => p.superNode ! AllClear(p.userName))
+        context.system.eventStream.publish(UpdatePlayer(me))
       }
       context.system.eventStream.publish(ActivePlayer(me))
     case MoveToken(combination) =>
