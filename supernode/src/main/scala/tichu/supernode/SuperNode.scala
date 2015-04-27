@@ -120,6 +120,9 @@ class SuperNode extends Actor with ActorLogging {
           log.info("Match is ready with: {}.", acceptedPlayers.map(_._1))
           acceptedPlayers.take(4).foreach(p => p._2 ! Ready(p._1, acceptedPlayers.toSeq))
           searchingPlayers = searchingPlayers.filterNot(p => acceptedPlayers.contains(p))
+          acceptedPlayers = acceptedPlayers.filterNot(p => acceptedPlayers.contains(p))
+          log.info("Matched. Currently searching: {}", searchingPlayers)
+          log.info("Matched. Currently accepted: {}", acceptedPlayers)
         }
       } else {
         log.warning("Received accept from unknown player: {}.", name)

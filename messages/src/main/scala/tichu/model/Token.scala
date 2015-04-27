@@ -4,7 +4,7 @@ import scala.collection.mutable
 
 class Token extends Serializable {
   def push(cards: Seq[Card]): Unit = {
-    if(stack.isEmpty) passes += 1
+    if(cards.isEmpty) passes += 1
     else {
       stack.push(cards)
       passes = 0

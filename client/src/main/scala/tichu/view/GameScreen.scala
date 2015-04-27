@@ -27,6 +27,7 @@ class GameScreen(me: Me, players: Seq[Other]) {
 
     def removeCards(cards: Seq[Card]) = {
       hand = playerHand(me.hand.filterNot(p => selectedCards.contains(p)))
+      selectedCards.clear()
       content = Seq(
         hand,
         new VBox {
@@ -115,12 +116,14 @@ class GameScreen(me: Me, players: Seq[Other]) {
     if (playerElement.isDefined) {
       playerElement.get.active()
     }
-    if (me.equals(player)) meElement.active()
+    if (me.userName.equals(player.userName)) meElement.active()
   }
 
   def updatePlayer(player: Player) = {
     val playerElement = playerElements.get(player.userName)
-    if (playerElement.isDefined) playerElement.get.updateLastPlayed(player.numberOfCards(), player.lastPlayed)
+    if (playerElement.isDefined) {
+      playerElement.get.updateLastPlayed(player.numberOfCards(), player.lastPlayed)
+    }
   }
 
   def updateScore(myTeam: Int, opponents: Int) = ???

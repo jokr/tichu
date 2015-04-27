@@ -1,7 +1,7 @@
 package tichu.model
 
 import akka.actor.{Actor, ActorLogging, ActorRef}
-import tichu.clientnode.{UpdatePlayer, MoveToken, ActivePlayer, GameReady}
+import tichu.clientnode.{GameReady, ActivePlayer, MoveToken, UpdatePlayer}
 import tichu.supernode._
 
 import scala.util.Random
@@ -51,6 +51,7 @@ class Game(myName: String, playerRefs: Seq[(String, ActorRef)]) extends Actor wi
   def setup(me: Me, others: Seq[Other]): Receive = {
     case Hand(`myName`, hand) =>
       me.hand = hand
+      context.system.eventStream.publish(GameReady(me, others))
       if (hand.contains(MahJong())) {
         log.info("I have the Mah Jong!")
         others.foreach(p => p.superNode ! HasMahJong(p.userName, myName))
@@ -59,7 +60,6 @@ class Game(myName: String, playerRefs: Seq[(String, ActorRef)]) extends Actor wi
       } else {
         context.become(exchange(me, others) orElse common, discardOld = true)
       }
-      context.system.eventStream.publish(GameReady(me, others))
   }
 
   def exchange(me: Me, others: Seq[Other]): Receive = {
@@ -76,9 +76,10 @@ class Game(myName: String, playerRefs: Seq[(String, ActorRef)]) extends Actor wi
     case GiveToken(`myName`, tkn) =>
       log.info("Received the token.")
       token = Some(tkn)
-      if(tkn.canBeCleared) {
+      if (tkn.canBeCleared) {
         log.info("Won this trick.")
         me.winTrick(tkn.clear())
+        log.info("I have the following tricks: {}.", me.tricks)
         others.foreach(p => p.superNode ! AllClear(p.userName))
       }
       context.system.eventStream.publish(ActivePlayer(me))
@@ -86,12 +87,16 @@ class Game(myName: String, playerRefs: Seq[(String, ActorRef)]) extends Actor wi
       assert(token.isDefined)
       log.info("I made a play: {}.", combination)
       me.play(combination)
+      token.get.push(combination)
+
       context.system.eventStream.publish(UpdatePlayer(me))
+      context.system.eventStream.publish(ActivePlayer(others.head))
 
       others.foreach(p => p.superNode ! MakePlay(p.userName, me.userName, combination))
-      token.get.push(combination)
       others.head.superNode ! GiveToken(others.head.userName, token.get)
+
       token = None
+
     case MakePlay(`myName`, playerName, combination) =>
       log.info("{} made a play: {}.", playerName, combination)
       val player = others.find(p => p.userName.equals(playerName)).get
@@ -99,10 +104,12 @@ class Game(myName: String, playerRefs: Seq[(String, ActorRef)]) extends Actor wi
       context.system.eventStream.publish(UpdatePlayer(player))
 
     case AllClear(`myName`) =>
-//      others.foreach(p =>
-//        p.lastPlayed = Seq()
-//      )
-//      me.lastPlayed = Seq()
+      others.foreach(p => {
+        p.lastPlayed = Seq()
+        context.system.eventStream.publish(UpdatePlayer(p))
+      })
+      me.lastPlayed = Seq()
+      context.system.eventStream.publish(UpdatePlayer(me))
   }
 
   def common: Receive = {
