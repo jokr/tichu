@@ -1,6 +1,7 @@
 package tichu.model
 
 import akka.actor.ActorRef
+import tichu.supernode.Partner
 
 abstract class Player {
   def numberOfCards(): Int
@@ -13,6 +14,8 @@ class Me(val teamMate: Other) extends Player() {
 }
 
 class Other(val userName: String, superNode: ActorRef) extends Player() {
+  def tellTeamMate(other: Other) = superNode ! Partner(userName, other.userName)
+
   var cards = 14
 
   def lastPlayed: Seq[Card] = Seq(

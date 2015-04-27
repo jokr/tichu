@@ -67,7 +67,7 @@ class ClientNode extends Actor with ActorLogging {
 
   def matched(superNode: ActorRef): Receive = matchedMessages(superNode) orElse common(Some(superNode))
 
-  def playing(superNode: ActorRef, game: Game): Receive = playingMessages(superNode, game) orElse common(Some(superNode))
+  def playing(superNode: ActorRef, game: ActorRef): Receive = playingMessages(superNode, game) orElse common(Some(superNode))
 
   def idleMessages(superNode: ActorRef): Receive = {
     case StartSearching() =>
@@ -89,13 +89,12 @@ class ClientNode extends Actor with ActorLogging {
       assert(name.equals(userName.get))
       log.info("Match with {}", players.map(_._1))
 
-      val game = new Game(userName.get, players.map(_._1))
+      val game = context.actorOf(Props(classOf[Game], userName.get, players))
       context.become(playing(superNode, game))
-      context.system.eventStream.publish(GameReady(game))
   }
 
-  def playingMessages(superNode: ActorRef, game: Game): Receive = {
-    case _ => log.warning("HELLO")
+  def playingMessages(superNode: ActorRef, game: ActorRef): Receive = {
+    case Partner(name, partner) => game forward Partner(name, partner)
   }
 
   /**

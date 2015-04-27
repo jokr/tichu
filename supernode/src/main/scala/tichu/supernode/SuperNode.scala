@@ -23,9 +23,9 @@ class SuperNode extends Actor with ActorLogging {
   context.actorSelection(s"akka.tcp://RemoteSystem@$bootstrapperServer:2553/user/bootstrapper") ! Identify("bootstrapper")
   context.system.eventStream.subscribe(self, classOf[DisassociatedEvent])
 
-  def invitesReady = searchingPlayers.size >= 2
+  def invitesReady = searchingPlayers.size >= 4
 
-  def matchReady = acceptedPlayers.size >= 2
+  def matchReady = acceptedPlayers.size >= 4
 
   def addNode(name: String, actor: ActorRef): Unit = {
     players += name -> actor
@@ -118,7 +118,7 @@ class SuperNode extends Actor with ActorLogging {
         acceptedPlayers += player.get
         if (matchReady) {
           log.info("Match is ready with: {}.", acceptedPlayers.map(_._1))
-          acceptedPlayers.foreach(p => p._2 ! Ready(p._1, acceptedPlayers.toSeq))
+          acceptedPlayers.take(4).foreach(p => p._2 ! Ready(p._1, acceptedPlayers.toSeq))
           searchingPlayers = searchingPlayers.filterNot(p => acceptedPlayers.contains(p))
         }
       } else {

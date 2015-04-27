@@ -1,6 +1,7 @@
 package tichu
 
 import akka.actor.ActorRef
+import tichu.model.Card
 
 package object supernode {
   final case class Join(userName: String)
@@ -24,4 +25,8 @@ package object supernode {
   final case class PlayerRequest(origin: ActorRef, seqNum: Int)
 
   final case class AvailablePlayers(players: Seq[(String, ActorRef)])
+
+  final case class Partner(userName: String, partner: String)
+
+  final case class StartingHand(userName: String, hand: Seq[Card])
 }
