@@ -35,6 +35,24 @@ object Window extends JFXApp {
     }
   }
 
+  val others = Seq(
+    new Other("Player A", null),
+    new Other("Player B", null),
+    new Other("Player C", null)
+  )
+
+//  val me = new Me("Player D", others(1), null)
+//
+//  me.hand = new Deck().shuffle.deal().head
+//
+//  val gScreen = gameScreen(me, others)
+//
+//  gScreen.activePlayer(me)
+//
+//  me.play(Seq(RegularCard(Suit.Jade, Pip.Four)))
+//
+//  gScreen.updatePlayer(me)
+
   loginScreen()
 
   def showError(summary: String, message: String) = {
@@ -59,6 +77,7 @@ object Window extends JFXApp {
   def gameScreen(me: Me, others: Seq[Other]): GameScreen = {
     val gameScreen = new GameScreen(me, others)
     stage.scene = gameScreen.screen
+    stage.minHeight = 800
     stage.show()
     gameScreen
   }

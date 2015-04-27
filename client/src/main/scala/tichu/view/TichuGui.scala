@@ -32,7 +32,7 @@ class TichuGui(controller: ActorRef) extends Actor with ActorLogging {
   def common: Receive = {
     case default =>
       log.warning("Received unexpected message: {}.", default)
-      Window.showError("Message.", default.toString)
+      //Window.showError("Message.", default.toString)
   }
 
   override def receive = login orElse common

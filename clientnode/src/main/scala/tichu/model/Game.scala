@@ -15,7 +15,7 @@ class Game(myName: String, playerRefs: Seq[(String, ActorRef)]) extends Actor wi
 
   if (amILeader) {
     log.info("I am leader.")
-    val me = new Me(myName, others(1), context.parent)
+    val me = new Me(myName, others(1), self)
     log.info("My team mate is {}.", me.teamMate.userName)
     log.info("The player to my left is {}.", others.head)
 
@@ -24,9 +24,9 @@ class Game(myName: String, playerRefs: Seq[(String, ActorRef)]) extends Actor wi
     for (i <- others.indices) {
       others(i).superNode ! Partner(
         others(i).userName,
-        allPlayers(i + 2 % 4).userName, // the team mate, sitting two spots away
-        allPlayers(i + 1 % 4).userName, // the player to the left, sitting one spot away
-        allPlayers(i + 3 % 4).userName) // the player to the right, sitting three spots away
+        allPlayers((i + 2) % 4).userName, // the team mate, sitting two spots away
+        allPlayers((i + 1) % 4).userName, // the player to the left, sitting one spot away
+        allPlayers((i + 3) % 4).userName) // the player to the right, sitting three spots away
     }
 
     context.become(setup(me, others) orElse common, discardOld = true)
@@ -41,7 +41,7 @@ class Game(myName: String, playerRefs: Seq[(String, ActorRef)]) extends Actor wi
       val partner = others.find(p => p.userName.equals(partnerName)).get
       val left = others.find(p => p.userName.equals(leftName)).get
       val right = others.find(p => p.userName.equals(rightName)).get
-      val me = new Me(myName, partner, context.parent)
+      val me = new Me(myName, partner, self)
       log.info("My team mate is {}.", partnerName)
       log.info("The player to the left is {}.", leftName)
 
@@ -50,7 +50,7 @@ class Game(myName: String, playerRefs: Seq[(String, ActorRef)]) extends Actor wi
 
   def setup(me: Me, others: Seq[Other]): Receive = {
     case Hand(`myName`, hand) =>
-      me.cards = hand
+      me.hand = hand
       if (hand.contains(MahJong())) {
         log.info("I have the Mah Jong!")
         others.foreach(p => p.superNode ! HasMahJong(p.userName, myName))
@@ -79,12 +79,15 @@ class Game(myName: String, playerRefs: Seq[(String, ActorRef)]) extends Actor wi
       if(tkn.canBeCleared) {
         log.info("Won this trick.")
         me.winTrick(tkn.clear())
+        others.foreach(p => p.superNode ! AllClear(p.userName))
       }
       context.system.eventStream.publish(ActivePlayer(me))
     case MoveToken(combination) =>
       assert(token.isDefined)
       log.info("I made a play: {}.", combination)
       me.play(combination)
+      context.system.eventStream.publish(UpdatePlayer(me))
+
       others.foreach(p => p.superNode ! MakePlay(p.userName, me.userName, combination))
       token.get.push(combination)
       others.head.superNode ! GiveToken(others.head.userName, token.get)
@@ -94,6 +97,12 @@ class Game(myName: String, playerRefs: Seq[(String, ActorRef)]) extends Actor wi
       val player = others.find(p => p.userName.equals(playerName)).get
       player.play(combination)
       context.system.eventStream.publish(UpdatePlayer(player))
+
+    case AllClear(`myName`) =>
+//      others.foreach(p =>
+//        p.lastPlayed = Seq()
+//      )
+//      me.lastPlayed = Seq()
   }
 
   def common: Receive = {

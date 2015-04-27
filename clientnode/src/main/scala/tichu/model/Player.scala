@@ -18,20 +18,20 @@ abstract class Player {
 }
 
 class Me(val userName: String, val teamMate: Other, val game: ActorRef) extends Player() {
-  var cards = Seq[Card]()
+  var hand = Seq[Card]()
   var tricks = Seq[Card]()
   var lastPlayed = Seq[Card]()
 
-  override def numberOfCards(): Int = cards.length
+  override def numberOfCards(): Int = hand.length
 
   override def dealHand(hand: Seq[Card]): Unit = game ! Hand(userName, hand)
 
   override def play(combination: Seq[Card]): Unit = {
-    cards = cards.filterNot(p => combination.contains(p))
+    hand = hand.filterNot(p => combination.contains(p))
     lastPlayed = combination
   }
 
-  override def done() = cards.isEmpty
+  override def done() = hand.isEmpty
 
   def winTrick(cards: Seq[Card]) = tricks = tricks ++ cards
 }

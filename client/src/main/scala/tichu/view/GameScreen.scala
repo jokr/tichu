@@ -18,15 +18,15 @@ import scalafx.scene.text.{Font, FontWeight, Text, TextAlignment}
 import scalafx.scene.{Group, Scene}
 
 class GameScreen(me: Me, players: Seq[Other]) {
-  var playerElements = Map(players map { p => p.userName -> playerElement(p) }: _*)
+  var playerElements = Map(players map { p => p.userName -> playerElement(p) }: _*) + (me.userName -> playerElement(me))
 
   val meElement = new HBox {
     val selectedCards = mutable.Set[Card]()
 
-    var hand = playerHand(me.cards)
+    var hand = playerHand(me.hand)
 
     def removeCards(cards: Seq[Card]) = {
-      hand = playerHand(me.cards.filterNot(p => selectedCards.contains(p)))
+      hand = playerHand(me.hand.filterNot(p => selectedCards.contains(p)))
       content = Seq(
         hand,
         new VBox {
@@ -114,16 +114,13 @@ class GameScreen(me: Me, players: Seq[Other]) {
     val playerElement = playerElements.get(player.userName)
     if (playerElement.isDefined) {
       playerElement.get.active()
-    } else {
-      meElement.active()
     }
+    if (me.equals(player)) meElement.active()
   }
 
-  def updatePlayer(player: Other) = {
+  def updatePlayer(player: Player) = {
     val playerElement = playerElements.get(player.userName)
-    if (playerElement.isDefined) {
-      playerElement.get.updateLastPlayed(player.numberOfCards(), player.lastPlayed)
-    }
+    if (playerElement.isDefined) playerElement.get.updateLastPlayed(player.numberOfCards(), player.lastPlayed)
   }
 
   def updateScore(myTeam: Int, opponents: Int) = ???
@@ -250,18 +247,20 @@ class GameScreen(me: Me, players: Seq[Other]) {
     }
   }
 
-  def playerElement(player: Other) = new HBox() {
+  def playerElement(player: Player) = new HBox() {
+    def getColor = {
+      if (me.teamMate.equals(player)) Color.GREEN
+      else if (me.equals(player)) Color.GREEN
+      else Color.RED
+    }
+
     lazy val icon = new StackPane {
       val remaining = new Text {
         text = player.numberOfCards().toString
         font = Font.font("Calibri", FontWeight.BOLD, 36)
         strokeWidth = 10
         alignment = Pos.CENTER
-        if (me.teamMate.equals(player)) {
-          fill = Color.GREEN
-        } else {
-          fill = Color.RED
-        }
+        fill = getColor
       }
 
       content = Seq(
@@ -272,12 +271,7 @@ class GameScreen(me: Me, players: Seq[Other]) {
           strokeWidth = 4.0
           arcHeight = 30
           arcWidth = 30
-
-          if (me.teamMate.equals(player)) {
-            stroke = Color.GREEN
-          } else {
-            stroke = Color.RED
-          }
+          stroke = getColor
         },
         remaining
       )
@@ -288,11 +282,7 @@ class GameScreen(me: Me, players: Seq[Other]) {
       font = Font.font("Calibri", 26)
       strokeWidth = 10
       alignment = Pos.CENTER
-      if (me.teamMate.equals(player)) {
-        fill = Color.GREEN
-      } else {
-        fill = Color.RED
-      }
+      fill = getColor
     }
 
     lazy val lastPlayedElements = new FlowPane {

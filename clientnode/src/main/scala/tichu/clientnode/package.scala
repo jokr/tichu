@@ -57,7 +57,7 @@ package object clientnode {
 
   case class ActivePlayer(player: Player) extends GUIEvent
 
-  case class UpdatePlayer(player: Other) extends GUIEvent
+  case class UpdatePlayer(player: Player) extends GUIEvent
 
   case class MoveToken(combination: Seq[Card])
 }
