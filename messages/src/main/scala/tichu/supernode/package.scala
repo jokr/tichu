@@ -1,10 +1,10 @@
 package tichu
 
 import akka.actor.ActorRef
-import tichu.model.Card
+import tichu.model.{Token, Card}
 
 package object supernode {
-  sealed trait Forwardable {
+  trait Forwardable {
     def userName: String
   }
   
@@ -30,7 +30,11 @@ package object supernode {
 
   final case class AvailablePlayers(players: Seq[(String, ActorRef)])
 
-  final case class Partner(userName: String, partner: String) extends Forwardable
+  final case class Partner(userName: String, partner: String, left: String, right: String) extends Forwardable
 
-  final case class StartingHand(userName: String, hand: Seq[Card]) extends Forwardable
+  final case class Hand(userName: String, hand: Seq[Card]) extends Forwardable
+
+  final case class HasMahJong(userName: String) extends Forwardable
+
+  final case class GiveToken(userName: String, token: Token) extends Forwardable
 }
