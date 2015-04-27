@@ -13,15 +13,22 @@ class Game(myName: String, playerRefs: Seq[(String, ActorRef)]) extends Actor wi
   def amILeader = leader._1.equals(myName)
 
   if (amILeader) {
-    val me = new Me(others.head)
+    log.info("I am leader.")
+    val me = new Me(myName, others.head)
+    log.info("My team mate is {}.", others.head.userName)
+    others.head.tellTeamMate(me)
     others(1).tellTeamMate(others(2))
     others(2).tellTeamMate(others(1))
+    log.info("Our opponents are {}.", others.drop(1).map(_.userName))
     context.become(setup(me, others) orElse common, discardOld = true)
+  } else {
+    log.info("Waiting for leader {}.", leader._1)
   }
 
   def preSetup: Receive = {
     case Partner(`myName`, partner) =>
-      val me = new Me(others.find(p => p.userName.equals(partner)).get)
+      val me = new Me(myName, others.find(p => p.userName.equals(partner)).get)
+      log.info("My team mate is {}.", partner)
       context.become(setup(me, others))
   }
 

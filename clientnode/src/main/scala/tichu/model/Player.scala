@@ -5,16 +5,17 @@ import tichu.supernode.Partner
 
 abstract class Player {
   def numberOfCards(): Int
+  def userName: String
 }
 
-class Me(val teamMate: Other) extends Player() {
+class Me(val userName: String, val teamMate: Other) extends Player() {
   val cards = Seq[Card]()
 
   override def numberOfCards(): Int = cards.length
 }
 
 class Other(val userName: String, superNode: ActorRef) extends Player() {
-  def tellTeamMate(other: Other) = superNode ! Partner(userName, other.userName)
+  def tellTeamMate(partner: Player) = superNode ! Partner(userName, partner.userName)
 
   var cards = 14
 
