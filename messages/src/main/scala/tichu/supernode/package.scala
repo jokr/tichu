@@ -37,4 +37,6 @@ package object supernode {
   final case class HasMahJong(userName: String, startingPlayer: String) extends Forwardable
 
   final case class GiveToken(userName: String, token: Token) extends Forwardable
+
+  final case class MakePlay(userName: String, player: String, combination: Seq[Card]) extends Forwardable
 }
