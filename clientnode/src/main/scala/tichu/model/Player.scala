@@ -20,13 +20,7 @@ class Me(val userName: String, val teamMate: Other, localNode: ActorRef) extends
 
 class Other(val userName: String, val superNode: ActorRef) extends Player() {
   var cards = 14
-
-  def lastPlayed: Seq[Card] = Seq(
-    new RegularCard(Suit.Jade, Pip.Ace),
-    new RegularCard(Suit.Pagoda, Pip.King),
-    new RegularCard(Suit.Sword, Pip.Queen),
-    new RegularCard(Suit.Star, Pip.Jack)
-  )
+  var lastPlayed = Seq[Card]()
 
   override def numberOfCards(): Int = cards
 

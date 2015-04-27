@@ -20,12 +20,12 @@ class TichuGui(controller: ActorRef) extends Actor with ActorLogging {
   def lobby: Receive = {
     case Invited(broker) => Window.showInvite(broker)
     case GameReady(me, others) =>
-      Window.gameScreen(me, others)
-      context.become(game orElse common)
+      val screen = Window.gameScreen(me, others)
+      context.become(game(screen) orElse common)
   }
 
-  def game: Receive = {
-    case _ => log.warning("HELLO")
+  def game(screen: GameScreen): Receive = {
+    case ActivePlayer(startPlayer) => screen.activePlayer(startPlayer)
   }
 
   def common: Receive = {

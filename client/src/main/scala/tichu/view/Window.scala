@@ -6,8 +6,9 @@ import javafx.scene.control.{Alert, ButtonType}
 import akka.actor.ActorRef
 import org.controlsfx.dialog.Dialogs
 import tichu.clientnode.{Accepted, Declined, Shutdown}
-import tichu.model.{Other, Me}
+import tichu.model.{Me, Other}
 
+import scala.collection.mutable
 import scalafx.Includes._
 import scalafx.application.JFXApp
 import scalafx.application.JFXApp.PrimaryStage
@@ -16,6 +17,8 @@ import scalafx.stage.WindowEvent
 
 object Window extends JFXApp {
   lazy val login = new LoginScreen()
+
+  val screens = mutable.Map()
 
   stage = new PrimaryStage {
     title = "Tichu"
@@ -53,9 +56,11 @@ object Window extends JFXApp {
     stage.show()
   }
 
-  def gameScreen(me: Me, others: Seq[Other]) = {
-    stage.scene = new GameScreen(me, others).screen
+  def gameScreen(me: Me, others: Seq[Other]): GameScreen = {
+    val gameScreen = new GameScreen(me, others)
+    stage.scene = gameScreen.screen
     stage.show()
+    gameScreen
   }
 
   def showInvite(broker: ActorRef) = {

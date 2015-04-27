@@ -12,11 +12,27 @@ import scalafx.scene.input.MouseEvent
 import scalafx.scene.layout._
 import scalafx.scene.paint.Color
 import scalafx.scene.shape.Rectangle
-import scalafx.scene.text.{TextAlignment, Font, FontWeight, Text}
+import scalafx.scene.text.{Font, FontWeight, Text, TextAlignment}
 import scalafx.scene.{Group, Scene}
 
 class GameScreen(me: Me, players: Seq[Other]) {
   val selectedCards = mutable.Set[Card]()
+
+  val playerElements = Map(players map { p => p.userName -> playerElement(p) }: _*)
+
+  def activePlayer(player: Player): Unit = {
+    playerElements.values.foreach(p => p.inactive())
+    val playerElement = playerElements.get(player.userName)
+    if(playerElement.isDefined) {
+      playerElement.get.active()
+    }
+  }
+
+  def updatePlayer(player: Other) = ???
+
+  def updateHand(me: Me) = ???
+
+  def updateScore(myTeam: Int, opponents: Int) = ???
 
   lazy val screen = new Scene {
     root = new BorderPane {
@@ -58,20 +74,20 @@ class GameScreen(me: Me, players: Seq[Other]) {
                   }
                 )
               },
-            new HBox {
-              spacing = 40
-              content = Seq(
-                new Text {
-                  text = "Team B"
-                  font = new Font("Berlin Sans FB", 36)
-                },
-                new Text {
-                  text = "300"
-                  font = new Font("Berlin Sans FB", 36)
-                  textAlignment = TextAlignment.RIGHT
-                }
-              )
-            }
+              new HBox {
+                spacing = 40
+                content = Seq(
+                  new Text {
+                    text = "Team B"
+                    font = new Font("Berlin Sans FB", 36)
+                  },
+                  new Text {
+                    text = "300"
+                    font = new Font("Berlin Sans FB", 36)
+                    textAlignment = TextAlignment.RIGHT
+                  }
+                )
+              }
             )
           }
         )
@@ -116,7 +132,7 @@ class GameScreen(me: Me, players: Seq[Other]) {
       element.margin = Insets(0, 0, 0, p * 50)
       element.onMouseClicked = {
         e: MouseEvent =>
-          if(selectedCards.contains(hand(p))) {
+          if (selectedCards.contains(hand(p))) {
             element.deselect()
             selectedCards.remove(hand(p))
           } else {
@@ -200,58 +216,64 @@ class GameScreen(me: Me, players: Seq[Other]) {
   }
 
   def playerElement(player: Other) = new VBox() {
-    padding = Insets(10)
-    content = Seq(
-      new StackPane {
-        val icon = Seq(
-          new Rectangle {
-            width = 100
-            height = 100
-            fill = Color.TRANSPARENT
-            strokeWidth = 4.0
-            arcHeight = 30
-            arcWidth = 30
+    val icon = new StackPane {
+      content = Seq(
+        new Rectangle {
+          width = 100
+          height = 100
+          fill = Color.TRANSPARENT
+          strokeWidth = 4.0
+          arcHeight = 30
+          arcWidth = 30
 
-            if (me.teamMate.equals(player)) {
-              stroke = Color.GREEN
-            } else {
-              stroke = Color.RED
-            }
-          },
-          new Text {
-            text = player.numberOfCards().toString
-            font = Font.font("Calibri", FontWeight.BOLD, 36)
-            strokeWidth = 10
-            alignment = Pos.CENTER
-            if (me.teamMate.equals(player)) {
-              fill = Color.GREEN
-            } else {
-              fill = Color.RED
-            }
+          if (me.teamMate.equals(player)) {
+            stroke = Color.GREEN
+          } else {
+            stroke = Color.RED
           }
-        )
-        if (true) {
-          content = icon :+ new ImageView {
-            image = new Image("goldstar.png")
-            preserveRatio = true
-            fitWidth = 40
-            alignmentInParent = Pos.TOP_LEFT
+        },
+        new Text {
+          text = player.numberOfCards().toString
+          font = Font.font("Calibri", FontWeight.BOLD, 36)
+          strokeWidth = 10
+          alignment = Pos.CENTER
+          if (me.teamMate.equals(player)) {
+            fill = Color.GREEN
+          } else {
+            fill = Color.RED
           }
-        } else {
-          content = icon
         }
-      },
-      new Text {
-        text = player.userName
-        font = Font.font("Calibri", 26)
-        strokeWidth = 10
-        alignment = Pos.CENTER
-        if (me.teamMate.equals(player)) {
-          fill = Color.GREEN
-        } else {
-          fill = Color.RED
-        }
+      )
+    }
+
+    val name = new Text {
+      text = player.userName
+      font = Font.font("Calibri", 26)
+      strokeWidth = 10
+      alignment = Pos.CENTER
+      if (me.teamMate.equals(player)) {
+        fill = Color.GREEN
+      } else {
+        fill = Color.RED
       }
-    )
+    }
+
+    def active() = {
+      icon.content.add(goldStar)
+    }
+
+    def inactive() = {
+      icon.content.remove(goldStar)
+    }
+
+    padding = Insets(10)
+    content = Seq(icon, name)
+
+    def goldStar = new ImageView {
+      image = new Image("goldstar.png")
+      preserveRatio = true
+      fitWidth = 40
+      alignmentInParent = Pos.TOP_LEFT
+    }
   }
 }

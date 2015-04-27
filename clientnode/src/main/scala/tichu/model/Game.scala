@@ -64,9 +64,9 @@ class Game(myName: String, playerRefs: Seq[(String, ActorRef)]) extends Actor wi
   }
 
   def game(me: Me, others: Seq[Other]): Receive = {
-    case GiveToken(`myName`, t) =>
+    case GiveToken(`myName`, tkn) =>
       log.info("Received the token.")
-      token = Some(t)
+      token = Some(tkn)
   }
 
   def common: Receive = {
