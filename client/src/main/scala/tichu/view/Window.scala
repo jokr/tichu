@@ -23,6 +23,9 @@ object Window extends JFXApp {
     minWidth = 1024
     minHeight = 768
 
+    maxWidth = 1024
+    maxHeight = 768
+
     scene = new Scene()
 
     onCloseRequest = {
@@ -32,7 +35,7 @@ object Window extends JFXApp {
     }
   }
 
-  loginScreen()
+  gameScreen()
 
   def showError(summary: String, message: String) = {
     Dialogs.create().
@@ -45,10 +48,12 @@ object Window extends JFXApp {
   def loginScreen() = {
     login.reset()
     stage.scene = login.screen
+    stage.show()
   }
 
   def lobbyScreen(userName: String) = {
     stage.scene = new LobbyScreen(userName).screen
+    stage.show()
   }
 
   def gameScreen() = {
@@ -61,6 +66,7 @@ object Window extends JFXApp {
     )
 
     stage.scene = new GameScreen(me, others).screen
+    stage.show()
   }
 
   def showInvite(broker: ActorRef) = {
