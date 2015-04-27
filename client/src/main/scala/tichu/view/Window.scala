@@ -6,7 +6,7 @@ import javafx.scene.control.{Alert, ButtonType}
 import akka.actor.ActorRef
 import org.controlsfx.dialog.Dialogs
 import tichu.clientnode.{Accepted, Declined, Shutdown}
-import tichu.model.{Me, Other}
+import tichu.model._
 
 import scala.collection.mutable
 import scalafx.Includes._

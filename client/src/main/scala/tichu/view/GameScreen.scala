@@ -1,9 +1,11 @@
 package tichu.view
 
+import tichu.clientnode.MoveToken
 import tichu.model._
 
 import scala.collection.mutable
 import scalafx.Includes._
+import scalafx.event.ActionEvent
 import scalafx.geometry.{Insets, Pos}
 import scalafx.scene.control.Button
 import scalafx.scene.effect.InnerShadow
@@ -16,33 +18,123 @@ import scalafx.scene.text.{Font, FontWeight, Text, TextAlignment}
 import scalafx.scene.{Group, Scene}
 
 class GameScreen(me: Me, players: Seq[Other]) {
-  val selectedCards = mutable.Set[Card]()
+  var playerElements = Map(players map { p => p.userName -> playerElement(p) }: _*)
 
-  val playerElements = Map(players map { p => p.userName -> playerElement(p) }: _*)
+  val meElement = new HBox {
+    val selectedCards = mutable.Set[Card]()
+
+    var hand = playerHand(me.cards)
+
+    def removeCards(cards: Seq[Card]) = {
+      hand = playerHand(me.cards.filterNot(p => selectedCards.contains(p)))
+      content = Seq(
+        hand,
+        new VBox {
+          padding = Insets(20)
+          spacing = 5
+          content = buttons
+        }
+      )
+    }
+
+    val buttons: Seq[Button] = Seq(
+      new Button {
+        text = "Submit"
+        disable = true
+        maxWidth = Double.MaxValue
+        onAction = {
+          event: ActionEvent =>
+            me.game ! MoveToken(selectedCards.toSeq)
+            removeCards(selectedCards.toSeq)
+            inactive()
+        }
+      },
+      new Button {
+        text = "Pass"
+        disable = true
+        maxWidth = Double.MaxValue
+        onAction = {
+          event: ActionEvent =>
+            hand.deselectAll()
+            me.game ! MoveToken(Seq())
+            inactive()
+        }
+      }
+    )
+
+    def active(): Unit = buttons.foreach(_.disable = false)
+
+    def inactive(): Unit = buttons.foreach(_.disable = true)
+
+    def playerHand(hand: Seq[Card]) = new Group {
+      def deselectAll() = cards.foreach(p => p.deselect())
+
+      var cards = hand.indices.map(p => clickableCard(hand(p), 50 * p))
+
+      def clickableCard(card: Card, offset: Int) = {
+        val element = cardElement(card, 84, 120)
+        element.margin = Insets(0, 0, 0, offset)
+        element.onMouseClicked = {
+          e: MouseEvent =>
+            if (selectedCards.contains(card)) {
+              element.deselect()
+              selectedCards.remove(card)
+            } else {
+              element.select()
+              selectedCards.add(card)
+            }
+        }
+        element
+      }
+
+      content = {
+        new StackPane {
+          minWidth = 14 * 50 + 84
+          maxWidth = 14 * 50 + 84
+          padding = Insets(25)
+          content = cards
+          alignment = Pos.BASELINE_LEFT
+        }
+      }
+    }
+
+    style = "-fx-background-color: beige"
+    content = Seq(
+      hand,
+      new VBox {
+        padding = Insets(20)
+        spacing = 5
+        content = buttons
+      }
+    )
+  }
 
   def activePlayer(player: Player): Unit = {
     playerElements.values.foreach(p => p.inactive())
     val playerElement = playerElements.get(player.userName)
-    if(playerElement.isDefined) {
+    if (playerElement.isDefined) {
       playerElement.get.active()
+    } else {
+      meElement.active()
     }
   }
 
-  def updatePlayer(player: Other) = ???
-
-  def updateHand(me: Me) = ???
+  def updatePlayer(player: Other) = {
+    val playerElement = playerElements.get(player.userName)
+    if (playerElement.isDefined) {
+      playerElement.get.updateLastPlayed(player.numberOfCards(), player.lastPlayed)
+    }
+  }
 
   def updateScore(myTeam: Int, opponents: Int) = ???
 
   lazy val screen = new Scene {
     root = new BorderPane {
 
-      left = new GridPane {
+      left = new VBox {
         padding = Insets(25)
-        for (i <- players.indices) {
-          add(playerElement(players(i)), 0, i)
-          add(lastPlayedElement(players(i).lastPlayed), 1, i)
-        }
+        spacing = 5
+        content = playerElements.values
       }
 
       right = new StackPane {
@@ -93,64 +185,7 @@ class GameScreen(me: Me, players: Seq[Other]) {
         )
       }
 
-      bottom = new HBox {
-        style = "-fx-background-color: beige"
-        content = Seq(
-          playerHand(me.cards),
-          new VBox {
-            padding = Insets(20)
-            spacing = 5
-            content = Seq(
-              new Button {
-                text = "Submit"
-                disable = true
-                maxWidth = Double.MaxValue
-              },
-              new Button {
-                text = "Pass"
-                disable = true
-                maxWidth = Double.MaxValue
-              }
-            )
-          }
-        )
-      }
-
-      vgrow = Priority.ALWAYS
-      hgrow = Priority.ALWAYS
-    }
-  }
-
-  def lastPlayedElement(hand: Seq[Card]) = new HBox {
-    spacing = 2
-    content = hand.map(card => cardElement(card))
-  }
-
-  def playerHand(hand: Seq[Card]) = new Group {
-    val cards = hand.indices.map(p => {
-      val element = cardElement(hand(p), 84, 120)
-      element.margin = Insets(0, 0, 0, p * 50)
-      element.onMouseClicked = {
-        e: MouseEvent =>
-          if (selectedCards.contains(hand(p))) {
-            element.deselect()
-            selectedCards.remove(hand(p))
-          } else {
-            element.select()
-            selectedCards.add(hand(p))
-          }
-      }
-      element
-    })
-
-    content = {
-      new StackPane {
-        minWidth = 14 * 50 + 84
-        maxWidth = 14 * 50 + 84
-        padding = Insets(25)
-        content = cards
-        alignment = Pos.BASELINE_LEFT
-      }
+      bottom = meElement
     }
   }
 
@@ -215,8 +250,20 @@ class GameScreen(me: Me, players: Seq[Other]) {
     }
   }
 
-  def playerElement(player: Other) = new VBox() {
-    val icon = new StackPane {
+  def playerElement(player: Other) = new HBox() {
+    lazy val icon = new StackPane {
+      val remaining = new Text {
+        text = player.numberOfCards().toString
+        font = Font.font("Calibri", FontWeight.BOLD, 36)
+        strokeWidth = 10
+        alignment = Pos.CENTER
+        if (me.teamMate.equals(player)) {
+          fill = Color.GREEN
+        } else {
+          fill = Color.RED
+        }
+      }
+
       content = Seq(
         new Rectangle {
           width = 100
@@ -232,21 +279,11 @@ class GameScreen(me: Me, players: Seq[Other]) {
             stroke = Color.RED
           }
         },
-        new Text {
-          text = player.numberOfCards().toString
-          font = Font.font("Calibri", FontWeight.BOLD, 36)
-          strokeWidth = 10
-          alignment = Pos.CENTER
-          if (me.teamMate.equals(player)) {
-            fill = Color.GREEN
-          } else {
-            fill = Color.RED
-          }
-        }
+        remaining
       )
     }
 
-    val name = new Text {
+    lazy val name = new Text {
       text = player.userName
       font = Font.font("Calibri", 26)
       strokeWidth = 10
@@ -258,22 +295,34 @@ class GameScreen(me: Me, players: Seq[Other]) {
       }
     }
 
-    def active() = {
-      icon.content.add(goldStar)
+    lazy val lastPlayedElements = new FlowPane {
+      spacing = 2
+      content = player.lastPlayed.map(p => cardElement(p))
     }
 
-    def inactive() = {
-      icon.content.remove(goldStar)
-    }
-
-    padding = Insets(10)
-    content = Seq(icon, name)
-
-    def goldStar = new ImageView {
+    lazy val goldStar = new ImageView {
       image = new Image("goldstar.png")
       preserveRatio = true
       fitWidth = 40
       alignmentInParent = Pos.TOP_LEFT
     }
+
+    padding = Insets(10)
+    content = Seq(
+      new VBox {
+        alignment = Pos.CENTER_LEFT
+        content = Seq(icon, name)
+      },
+      lastPlayedElements
+    )
+
+    def updateLastPlayed(numberOfCards: Int, lastPlayed: Seq[Card]) = {
+      icon.remaining.text = numberOfCards.toString
+      lastPlayedElements.content = lastPlayed.map(p => cardElement(p))
+    }
+
+    def active() = icon.content.add(goldStar)
+
+    def inactive() = icon.content.remove(goldStar)
   }
 }

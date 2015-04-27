@@ -14,6 +14,8 @@ object Suit extends Enumeration {
 import tichu.model.Pip._
 import tichu.model.Suit._
 
+import scala.util.Random
+
 abstract class Card {
   def points: Int
 
@@ -78,4 +80,12 @@ case class Dog() extends SpecialCard {
   override def points: Int = 0
 
   override def char: String = "D"
+}
+
+class Deck private(val cards: Seq[Card]) {
+  def this() = this((for {s <- Suit.values.toList; v <- Pip.values} yield RegularCard(s, v)) ++ Seq(Dragon(), Phoenix(), MahJong(), Dog()))
+
+  def shuffle: Deck = new Deck(Random.shuffle(cards))
+
+  def deal(): (Seq[Seq[Card]]) = cards.grouped(14).toSeq
 }

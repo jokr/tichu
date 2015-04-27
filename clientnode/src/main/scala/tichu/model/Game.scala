@@ -1,8 +1,8 @@
 package tichu.model
 
 import akka.actor.{Actor, ActorLogging, ActorRef}
-import tichu.clientnode.{ActivePlayer, GameReady}
-import tichu.supernode.{GiveToken, Hand, HasMahJong, Partner}
+import tichu.clientnode.{UpdatePlayer, MoveToken, ActivePlayer, GameReady}
+import tichu.supernode._
 
 import scala.util.Random
 
@@ -15,12 +15,20 @@ class Game(myName: String, playerRefs: Seq[(String, ActorRef)]) extends Actor wi
 
   if (amILeader) {
     log.info("I am leader.")
-    val me = new Me(myName, others.head, context.parent)
-    log.info("My team mate is {}.", others.head.userName)
-    others.head.superNode ! Partner(others.head.userName, myName, others(1).userName, others(2).userName)
-    others(1).superNode ! Partner(others(1).userName, others(2).userName, others.head.userName, myName)
-    others(2).superNode ! Partner(others(2).userName, others(1).userName, myName, others.head.userName)
-    log.info("Our opponents are {}.", others.drop(1).map(_.userName))
+    val me = new Me(myName, others(1), context.parent)
+    log.info("My team mate is {}.", me.teamMate.userName)
+    log.info("The player to my left is {}.", others.head)
+
+    val allPlayers: Seq[Player] = others :+ me
+
+    for (i <- others.indices) {
+      others(i).superNode ! Partner(
+        others(i).userName,
+        allPlayers(i + 2 % 4).userName, // the team mate, sitting two spots away
+        allPlayers(i + 1 % 4).userName, // the player to the left, sitting one spot away
+        allPlayers(i + 3 % 4).userName) // the player to the right, sitting three spots away
+    }
+
     context.become(setup(me, others) orElse common, discardOld = true)
     log.info("Deal hands.")
     distributeCards(others :+ me)
@@ -35,8 +43,9 @@ class Game(myName: String, playerRefs: Seq[(String, ActorRef)]) extends Actor wi
       val right = others.find(p => p.userName.equals(rightName)).get
       val me = new Me(myName, partner, context.parent)
       log.info("My team mate is {}.", partnerName)
+      log.info("The player to the left is {}.", leftName)
 
-      context.become(setup(me, Seq(partner, right, left)), discardOld = true)
+      context.become(setup(me, Seq(left, partner, right)), discardOld = true)
   }
 
   def setup(me: Me, others: Seq[Other]): Receive = {
@@ -67,6 +76,24 @@ class Game(myName: String, playerRefs: Seq[(String, ActorRef)]) extends Actor wi
     case GiveToken(`myName`, tkn) =>
       log.info("Received the token.")
       token = Some(tkn)
+      if(tkn.canBeCleared) {
+        log.info("Won this trick.")
+        me.winTrick(tkn.clear())
+      }
+      context.system.eventStream.publish(ActivePlayer(me))
+    case MoveToken(combination) =>
+      assert(token.isDefined)
+      log.info("I made a play: {}.", combination)
+      me.play(combination)
+      others.foreach(p => p.superNode ! MakePlay(p.userName, me.userName, combination))
+      token.get.push(combination)
+      others.head.superNode ! GiveToken(others.head.userName, token.get)
+      token = None
+    case MakePlay(`myName`, playerName, combination) =>
+      log.info("{} made a play: {}.", playerName, combination)
+      val player = others.find(p => p.userName.equals(playerName)).get
+      player.play(combination)
+      context.system.eventStream.publish(UpdatePlayer(player))
   }
 
   def common: Receive = {
@@ -74,16 +101,11 @@ class Game(myName: String, playerRefs: Seq[(String, ActorRef)]) extends Actor wi
   }
 
   def distributeCards(players: Seq[Player]) = {
-    val hands = new Random().shuffle(deck()).grouped(14).toSeq
+    val hands = new Deck().shuffle.deal()
     assert(hands.forall(p => p.length == 14))
     for (i <- players.indices) {
       players(i).dealHand(hands(i))
     }
-  }
-
-  def deck(): Seq[Card] = {
-    val regularCards: Seq[Card] = for {s <- Suit.values.toList; v <- Pip.values} yield RegularCard(s, v)
-    regularCards ++ Seq(Dragon(), Phoenix(), MahJong(), Dog())
   }
 
   override def receive: Receive = preSetup orElse common

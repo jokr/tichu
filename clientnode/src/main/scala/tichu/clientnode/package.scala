@@ -1,7 +1,7 @@
 package tichu
 
 import akka.actor.ActorRef
-import tichu.model.{Player, Me, Other}
+import tichu.model.{Card, Player, Me, Other}
 
 /**
  * Messages passed between frontend clients and the local node.
@@ -56,4 +56,8 @@ package object clientnode {
   case class GameReady(me: Me, others: Seq[Other]) extends GUIEvent
 
   case class ActivePlayer(player: Player) extends GUIEvent
+
+  case class UpdatePlayer(player: Other) extends GUIEvent
+
+  case class MoveToken(combination: Seq[Card])
 }
