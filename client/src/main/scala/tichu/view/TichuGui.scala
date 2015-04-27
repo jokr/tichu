@@ -19,8 +19,8 @@ class TichuGui(controller: ActorRef) extends Actor with ActorLogging {
 
   def lobby: Receive = {
     case Invited(broker) => Window.showInvite(broker)
-    case GameReady(gameModel) =>
-      Window.gameScreen()
+    case GameReady(me, others) =>
+      Window.gameScreen(me, others)
       context.become(game orElse common)
   }
 
@@ -29,7 +29,9 @@ class TichuGui(controller: ActorRef) extends Actor with ActorLogging {
   }
 
   def common: Receive = {
-    case default => Window.showError("Message.", default.toString)
+    case default =>
+      log.warning("Received unexpected message: {}.", default)
+      Window.showError("Message.", default.toString)
   }
 
   override def receive = login orElse common

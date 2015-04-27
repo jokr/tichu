@@ -7,11 +7,11 @@ import tichu.supernode.{GiveToken, Hand, HasMahJong, Partner}
 import scala.util.Random
 
 class Game(myName: String, playerRefs: Seq[(String, ActorRef)]) extends Actor with ActorLogging {
-  private val leader = playerRefs.map(p => if (p._1.equals(myName)) (p._1, context.parent) else p).sortWith(_._1 > _._1).head._2
+  private val leader = playerRefs.map(p => if (p._1.equals(myName)) (p._1, context.parent) else p).sortWith(_._1 > _._1).head
   private val others = new Random().shuffle(playerRefs.filterNot(p => p._1.equals(myName)).map(p => new Other(p._1, p._2)))
   private var token: Option[Token] = None
 
-  def amILeader = leader.equals(context.parent)
+  def amILeader = leader._1.equals(myName)
 
   if (amILeader) {
     log.info("I am leader.")
@@ -24,6 +24,8 @@ class Game(myName: String, playerRefs: Seq[(String, ActorRef)]) extends Actor wi
     context.become(setup(me, others) orElse common, discardOld = true)
     log.info("Deal hands.")
     distributeCards(others :+ me)
+  } else {
+    log.info("Waiting for leader {}.", leader._1)
   }
 
   def preSetup: Receive = {
@@ -43,17 +45,15 @@ class Game(myName: String, playerRefs: Seq[(String, ActorRef)]) extends Actor wi
       context.become(exchange(me, others) orElse common, discardOld = true)
       if (hand.contains(MahJong())) {
         log.info("I have the Mah Jong!")
-        leader ! HasMahJong(myName)
+        others.foreach(p => p.superNode ! HasMahJong(p.userName, myName))
+        context.system.eventStream.publish(ActivePlayer(me))
+        context.become(game(me, others) orElse common)
       }
       context.system.eventStream.publish(GameReady(me, others))
   }
 
   def exchange(me: Me, others: Seq[Other]): Receive = {
-    case HasMahJong(`myName`) =>
-      token = Some(new Token())
-      context.system.eventStream.publish(ActivePlayer(me))
-      context.become(game(me, others) orElse common)
-    case HasMahJong(name) =>
+    case HasMahJong(`myName`, name) =>
       val startPlayer = others.find(p => p.userName.equals(name)).get
       if (amILeader) {
         startPlayer.superNode ! GiveToken(startPlayer.userName, new Token())
@@ -63,7 +63,9 @@ class Game(myName: String, playerRefs: Seq[(String, ActorRef)]) extends Actor wi
   }
 
   def game(me: Me, others: Seq[Other]): Receive = {
-    case _ => log.warning("Game on!")
+    case GiveToken(`myName`, t) =>
+      log.info("Received the token.")
+      token = Some(t)
   }
 
   def common: Receive = {

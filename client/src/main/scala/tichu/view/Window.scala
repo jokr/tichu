@@ -6,6 +6,7 @@ import javafx.scene.control.{Alert, ButtonType}
 import akka.actor.ActorRef
 import org.controlsfx.dialog.Dialogs
 import tichu.clientnode.{Accepted, Declined, Shutdown}
+import tichu.model.{Other, Me}
 
 import scalafx.Includes._
 import scalafx.application.JFXApp
@@ -52,8 +53,8 @@ object Window extends JFXApp {
     stage.show()
   }
 
-  def gameScreen() = {
-    //stage.scene = new GameScreen(new Me(Any), None).screen
+  def gameScreen(me: Me, others: Seq[Other]) = {
+    stage.scene = new GameScreen(me, others).screen
     stage.show()
   }
 

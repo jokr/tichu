@@ -95,6 +95,9 @@ class ClientNode extends Actor with ActorLogging {
 
   def playingMessages(superNode: ActorRef, game: ActorRef): Receive = {
     case Partner(name, partner, left, right) => game forward Partner(name, partner, left, right)
+    case Hand(name, hand) => game forward Hand(name, hand)
+    case HasMahJong(name, startingPlayer) => game forward HasMahJong(name, startingPlayer)
+    case GiveToken(name, token) => game forward GiveToken(name, token)
   }
 
   /**
