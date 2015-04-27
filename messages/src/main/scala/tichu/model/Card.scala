@@ -14,8 +14,9 @@ object Suit extends Enumeration {
 import tichu.model.Pip._
 import tichu.model.Suit._
 
-abstract class Card() {
+abstract class Card {
   def points: Int
+
   def char: String
 }
 
@@ -45,7 +46,9 @@ case class RegularCard(suit: Suit, value: Pip) extends Card {
   }
 }
 
-case class Phoenix() extends Card {
+abstract class SpecialCard extends Card
+
+case class Phoenix() extends SpecialCard {
   override def toString: String = "Phoenix"
 
   override def points: Int = -25
@@ -53,7 +56,7 @@ case class Phoenix() extends Card {
   override def char: String = "P"
 }
 
-case class Dragon() extends Card {
+case class Dragon() extends SpecialCard {
   override def toString: String = "Dragon"
 
   override def points: Int = 25
@@ -61,7 +64,7 @@ case class Dragon() extends Card {
   override def char: String = "D"
 }
 
-case class MahJong() extends Card {
+case class MahJong() extends SpecialCard {
   override def toString: String = "Mah Jong"
 
   override def points: Int = 0
@@ -69,8 +72,8 @@ case class MahJong() extends Card {
   override def char: String = "1"
 }
 
-case class Dog() extends Card {
-  override def toString: String = "Mah Jong"
+case class Dog() extends SpecialCard {
+  override def toString: String = "Dog"
 
   override def points: Int = 0
 

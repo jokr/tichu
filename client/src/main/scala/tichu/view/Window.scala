@@ -6,7 +6,7 @@ import javafx.scene.control.{Alert, ButtonType}
 import akka.actor.ActorRef
 import org.controlsfx.dialog.Dialogs
 import tichu.clientnode.{Accepted, Declined, Shutdown}
-import tichu.model.{Me, Other}
+import tichu.model.{Other, Me}
 
 import scalafx.Includes._
 import scalafx.application.JFXApp
@@ -23,9 +23,6 @@ object Window extends JFXApp {
     minWidth = 1024
     minHeight = 768
 
-    maxWidth = 1024
-    maxHeight = 768
-
     scene = new Scene()
 
     onCloseRequest = {
@@ -35,7 +32,7 @@ object Window extends JFXApp {
     }
   }
 
-  gameScreen()
+  loginScreen()
 
   def showError(summary: String, message: String) = {
     Dialogs.create().
@@ -56,15 +53,7 @@ object Window extends JFXApp {
     stage.show()
   }
 
-  def gameScreen() = {
-    val me = new Me(false)
-
-    val others = Seq(
-      new Other("Player A", false, true),
-      new Other("Player B", true, false),
-      new Other("Player B", false, false)
-    )
-
+  def gameScreen(me: Me, others: Seq[Other]) = {
     stage.scene = new GameScreen(me, others).screen
     stage.show()
   }

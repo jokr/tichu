@@ -2,12 +2,12 @@ package tichu.clientnode
 
 import akka.actor._
 import tichu.bootstrapper.Request
+import tichu.model.Game
 import tichu.supernode._
 
 class ClientNode extends Actor with ActorLogging {
   val bootstrapperServer = context.system.settings.config.getString("tichu.bootstrapper-server")
   var userName = None: Option[String]
-  val subscribers = collection.mutable.MutableList[ActorRef]()
 
   /**
    * Join a supernode and identify yourself with it.
@@ -37,7 +37,7 @@ class ClientNode extends Actor with ActorLogging {
 
     case ActorIdentity("bootstrapper", None) =>
       log.error("Could not find bootstrapper.")
-      subscribers.foreach(_ ! LoginFailure("Could not contact bootstrapper."))
+      context.system.eventStream.publish(LoginFailure("Could not contact bootstrapper."))
 
     case superNode: ActorRef =>
       log.info("Received path for supernode: {}.", superNode)
@@ -49,14 +49,14 @@ class ClientNode extends Actor with ActorLogging {
 
     case ActorIdentity("supernode", None) =>
       log.error("Could not find supernode.")
-      subscribers.foreach(_ ! LoginFailure("Could not contact supernode."))
+      context.system.eventStream.publish(LoginFailure("Could not contact supernode."))
 
     case Welcome(name) =>
       context.become(idle(sender()) orElse common(Some(sender())))
-      subscribers.foreach(_ ! LoginSuccess(name))
+      context.system.eventStream.publish(LoginSuccess(name))
 
     case InvalidUserName(name, reason) =>
-      subscribers.foreach(_ ! LoginFailure(reason))
+      context.system.eventStream.publish(LoginFailure(reason))
   }
 
   def receive = connecting orElse common(None)
@@ -66,6 +66,8 @@ class ClientNode extends Actor with ActorLogging {
   def searching(superNode: ActorRef): Receive = searchingMessages(superNode) orElse common(Some(superNode))
 
   def matched(superNode: ActorRef): Receive = matchedMessages(superNode) orElse common(Some(superNode))
+
+  def playing(superNode: ActorRef, game: ActorRef): Receive = playingMessages(superNode, game) orElse common(Some(superNode))
 
   def idleMessages(superNode: ActorRef): Receive = {
     case StartSearching() =>
@@ -77,7 +79,7 @@ class ClientNode extends Actor with ActorLogging {
     case Invite(name) =>
       assert(name.equals(userName.get))
       context.become(matched(superNode))
-      subscribers.foreach(_ ! Invited(sender()))
+      context.system.eventStream.publish(Invited(sender()))
   }
 
   def matchedMessages(superNode: ActorRef): Receive = {
@@ -85,8 +87,16 @@ class ClientNode extends Actor with ActorLogging {
     case Declined(broker) => broker ! Decline(userName.get)
     case Ready(name, players) =>
       assert(name.equals(userName.get))
+      val game = context.actorOf(Props(classOf[Game], userName.get, players))
+      context.become(playing(superNode, game))
       log.info("Match with {}", players.map(_._1))
-      subscribers.foreach(_ ! MatchReady(Seq()))
+  }
+
+  def playingMessages(superNode: ActorRef, game: ActorRef): Receive = {
+    case Partner(name, partner, left, right) => game forward Partner(name, partner, left, right)
+    case Hand(name, hand) => game forward Hand(name, hand)
+    case HasMahJong(name, startingPlayer) => game forward HasMahJong(name, startingPlayer)
+    case GiveToken(name, token) => game forward GiveToken(name, token)
   }
 
   /**
@@ -96,7 +106,6 @@ class ClientNode extends Actor with ActorLogging {
     case Shutdown(reason) =>
       if (superNode.isDefined) superNode.get ! Leave(userName.get)
       context.stop(self)
-    case Subscribe(actor) => subscribers += actor
     case default => log.warning("Received unexpected message: {}", default)
   }
 }

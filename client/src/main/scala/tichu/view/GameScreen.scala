@@ -87,12 +87,12 @@ class GameScreen(me: Me, players: Seq[Other]) {
             content = Seq(
               new Button {
                 text = "Submit"
-                disable = !me.isActive
+                disable = true
                 maxWidth = Double.MaxValue
               },
               new Button {
                 text = "Pass"
-                disable = !me.isActive
+                disable = true
                 maxWidth = Double.MaxValue
               }
             )
@@ -149,6 +149,11 @@ class GameScreen(me: Me, players: Seq[Other]) {
       strokeWidth = 3.0
       arcHeight = 10
       arcWidth = 10
+
+      effect = new InnerShadow {
+        color = Color.BLACK
+        choke = 0.5
+      }
     }
 
     def backgroundColor = card match {
@@ -156,6 +161,7 @@ class GameScreen(me: Me, players: Seq[Other]) {
       case RegularCard(Suit.Sword, value) => Color.DARKGREY
       case RegularCard(Suit.Pagoda, value) => Color.SKYBLUE
       case RegularCard(Suit.Star, value) => Color.LIGHTPINK
+      case card: SpecialCard => Color.BLUEVIOLET
     }
 
     def select() = {
@@ -178,7 +184,7 @@ class GameScreen(me: Me, players: Seq[Other]) {
                 case RegularCard(Suit.Jade, value) => new Image("jade.png")
                 case RegularCard(Suit.Sword, value) => new Image("sword.png")
                 case RegularCard(Suit.Pagoda, value) => new Image("pagoda.png")
-                case RegularCard(Suit.Star, value) => new Image("star.png")
+                case _ => new Image("star.png")
               }
             },
             new Text {
@@ -206,7 +212,7 @@ class GameScreen(me: Me, players: Seq[Other]) {
             arcHeight = 30
             arcWidth = 30
 
-            if (player.teamMate) {
+            if (me.teamMate.equals(player)) {
               stroke = Color.GREEN
             } else {
               stroke = Color.RED
@@ -217,14 +223,14 @@ class GameScreen(me: Me, players: Seq[Other]) {
             font = Font.font("Calibri", FontWeight.BOLD, 36)
             strokeWidth = 10
             alignment = Pos.CENTER
-            if (player.teamMate) {
+            if (me.teamMate.equals(player)) {
               fill = Color.GREEN
             } else {
               fill = Color.RED
             }
           }
         )
-        if (player.isActive) {
+        if (true) {
           content = icon :+ new ImageView {
             image = new Image("goldstar.png")
             preserveRatio = true
@@ -240,7 +246,7 @@ class GameScreen(me: Me, players: Seq[Other]) {
         font = Font.font("Calibri", 26)
         strokeWidth = 10
         alignment = Pos.CENTER
-        if (player.teamMate) {
+        if (me.teamMate.equals(player)) {
           fill = Color.GREEN
         } else {
           fill = Color.RED

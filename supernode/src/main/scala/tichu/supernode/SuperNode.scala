@@ -23,9 +23,9 @@ class SuperNode extends Actor with ActorLogging {
   context.actorSelection(s"akka.tcp://RemoteSystem@$bootstrapperServer:2553/user/bootstrapper") ! Identify("bootstrapper")
   context.system.eventStream.subscribe(self, classOf[DisassociatedEvent])
 
-  def invitesReady = searchingPlayers.size >= 2
+  def invitesReady = searchingPlayers.size >= 4
 
-  def matchReady = acceptedPlayers.size >= 2
+  def matchReady = acceptedPlayers.size >= 4
 
   def addNode(name: String, actor: ActorRef): Unit = {
     players += name -> actor
@@ -75,7 +75,7 @@ class SuperNode extends Actor with ActorLogging {
       initialPeers.foreach(_ ! Identify("peer"))
   }
 
-  def connected: Receive = supernode orElse forward orElse common
+  def connected: Receive = supernode orElse common
 
   def supernode: Receive = {
     /**
@@ -118,7 +118,7 @@ class SuperNode extends Actor with ActorLogging {
         acceptedPlayers += player.get
         if (matchReady) {
           log.info("Match is ready with: {}.", acceptedPlayers.map(_._1))
-          acceptedPlayers.foreach(p => p._2 ! Ready(p._1, acceptedPlayers.toSeq))
+          acceptedPlayers.take(4).foreach(p => p._2 ! Ready(p._1, acceptedPlayers.toSeq))
           searchingPlayers = searchingPlayers.filterNot(p => acceptedPlayers.contains(p))
         }
       } else {
@@ -160,24 +160,15 @@ class SuperNode extends Actor with ActorLogging {
     case DisassociatedEvent(local, remote, true) => removeNode(remote)
   }
 
-  def forward: Receive = {
-    case Invite(userName) =>
-      forwardToNode(userName, Invite(userName))
-    case Ready(userName, matchedPlayers) =>
-      forwardToNode(userName, Ready(userName, matchedPlayers))
-  }
-
-  def forwardToNode(userName: String, message: Any) = {
-    val node = players.get(userName)
-    if (node.isDefined) {
-      log.info("Forwarding: Send {} to {}", message, userName)
-      node.get forward message
-    } else {
-      log.warning("Forwarding: No node with the name {} registered.", userName)
-    }
-  }
-
   def common: Receive = {
+    case message: Forwardable =>
+      val node = players.get(message.userName)
+      if (node.isDefined) {
+        log.info("Forwarding: Send {} to {}", message, message.userName)
+        node.get forward message
+      } else {
+        log.warning("Forwarding: No node with the name {} registered.", message.userName)
+      }
     case default => log.warning("Received unexpected message: {}.", default)
   }
 
