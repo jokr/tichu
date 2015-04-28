@@ -6,7 +6,7 @@ import javafx.scene.control.{Alert, ButtonType}
 import akka.actor.ActorRef
 import org.controlsfx.dialog.Dialogs
 import tichu.clientnode.{Accepted, Declined, Shutdown}
-import tichu.model.{Me, Other}
+import tichu.model._
 
 import scala.collection.mutable
 import scalafx.Includes._
@@ -48,18 +48,16 @@ object Window extends JFXApp {
   def loginScreen() = {
     login.reset()
     stage.scene = login.screen
-    stage.show()
   }
 
   def lobbyScreen(userName: String) = {
     stage.scene = new LobbyScreen(userName).screen
-    stage.show()
   }
 
   def gameScreen(me: Me, others: Seq[Other]): GameScreen = {
     val gameScreen = new GameScreen(me, others)
     stage.scene = gameScreen.screen
-    stage.show()
+    stage.minHeight = 800
     gameScreen
   }
 
