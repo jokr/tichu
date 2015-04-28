@@ -41,18 +41,6 @@ object Window extends JFXApp {
     new Other("Player C", null)
   )
 
-//  val me = new Me("Player D", others(1), null)
-//
-//  me.hand = new Deck().shuffle.deal().head
-//
-//  val gScreen = gameScreen(me, others)
-//
-//  gScreen.activePlayer(me)
-//
-//  me.play(Seq(RegularCard(Suit.Jade, Pip.Four)))
-//
-//  gScreen.updatePlayer(me)
-
   loginScreen()
 
   def showError(summary: String, message: String) = {

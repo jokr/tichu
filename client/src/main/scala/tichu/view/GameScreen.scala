@@ -45,7 +45,7 @@ class GameScreen(me: Me, players: Seq[Other]) {
         maxWidth = Double.MaxValue
         onAction = {
           event: ActionEvent =>
-            me.game ! MoveToken(selectedCards.toSeq)
+            me.game ! MoveToken(selectedCards.toSeq.sorted(CardOrdering))
             removeCards(selectedCards.toSeq)
             inactive()
         }

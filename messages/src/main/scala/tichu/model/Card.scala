@@ -87,5 +87,19 @@ class Deck private(val cards: Seq[Card]) {
 
   def shuffle: Deck = new Deck(Random.shuffle(cards))
 
-  def deal(): (Seq[Seq[Card]]) = cards.grouped(14).toSeq
+  def deal(): (Seq[Seq[Card]]) = cards.grouped(14).map(p => p.sorted(CardOrdering)).toSeq
+}
+
+object CardOrdering extends Ordering[Card] {
+  def compare(a: Card, b: Card) = (a, b) match {
+    case (RegularCard(suitA, valueA), RegularCard(suitB, valueB)) => valueA.compare(valueB)
+    case (card: Card, Dragon()) => -1
+    case (Dragon(), card: Card) => 1
+    case (card: Card, Phoenix()) => -1
+    case (Phoenix(), card: Card) => 1
+    case (card: Card, Dog()) => 1
+    case (Dog(), card: Card) => -1
+    case (card: Card, MahJong()) => 1
+    case (MahJong(), card: Card) => -1
+  }
 }

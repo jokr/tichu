@@ -99,6 +99,9 @@ class ClientNode extends Actor with ActorLogging {
     case GiveToken(name, token) => game forward GiveToken(name, token)
     case MakePlay(name, player, combination) => game forward MakePlay(name, player, combination)
     case AllClear(name) => game forward AllClear(name)
+    case Done(name, player) => game forward Done(name, player)
+    case RequestTricks(name) => game forward RequestTricks(name)
+    case Tricks(name, player, tricks, hand) => game forward Tricks(name, player, tricks, hand)
   }
 
   /**

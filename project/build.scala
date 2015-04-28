@@ -7,6 +7,7 @@ object Build extends Build {
     version := "0.0.alpha1",
     scalaVersion := "2.11.6",
     libraryDependencies ++= akkaDependencies,
+    libraryDependencies += "org.scalatest" % "scalatest_2.11" % "2.2.4" % "test",
     resolvers += "Akka Snapshot Repository" at "http://repo.akka.io/snapshots/"
   )
 
