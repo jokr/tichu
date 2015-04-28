@@ -35,12 +35,6 @@ object Window extends JFXApp {
     }
   }
 
-  val others = Seq(
-    new Other("Player A", null),
-    new Other("Player B", null),
-    new Other("Player C", null)
-  )
-
   loginScreen()
 
   def showError(summary: String, message: String) = {
@@ -54,19 +48,16 @@ object Window extends JFXApp {
   def loginScreen() = {
     login.reset()
     stage.scene = login.screen
-    stage.show()
   }
 
   def lobbyScreen(userName: String) = {
     stage.scene = new LobbyScreen(userName).screen
-    stage.show()
   }
 
   def gameScreen(me: Me, others: Seq[Other]): GameScreen = {
     val gameScreen = new GameScreen(me, others)
     stage.scene = gameScreen.screen
     stage.minHeight = 800
-    stage.show()
     gameScreen
   }
 

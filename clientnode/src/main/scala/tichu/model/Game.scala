@@ -126,7 +126,7 @@ class Game(myName: String, playerRefs: Seq[(String, ActorRef)]) extends Actor wi
     case MakePlay(`myName`, playerName, combination) =>
       log.info("{} made a play: {}.", playerName, combination)
       val playerIdx = others.indexWhere(p => p.userName.equals(playerName))
-      if (playerIdx < 3) {
+      if (playerIdx < 2) {
         context.system.eventStream.publish(ActivePlayer(others(playerIdx + 1)))
       }
       others(playerIdx).play(combination)
