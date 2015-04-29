@@ -46,7 +46,7 @@ package object supernode {
 
   final case class RequestTricks(userName: String) extends Forwardable
 
-  final case class Tricks(userName: String, player: String, tricks: Seq[Card], hand: Seq[Card])
+  final case class Tricks(userName: String, player: String, tricks: Seq[Card], hand: Seq[Card]) extends Forwardable
 
-  final case class Score(userName: String, us: Int, them: Int)
+  final case class Score(userName: String, us: Int, them: Int) extends Forwardable
 }

@@ -128,9 +128,13 @@ class GameScreen(me: Me, players: Seq[Other]) {
       def getScore(teamName: String, score: Int) = new HBox {
         spacing = 40
         content = Seq(
-          new Text {
-            text = teamName
-            font = new Font("Berlin Sans FB", 36)
+          new VBox {
+            content = new Text {
+              text = teamName
+
+              font = new Font("Berlin Sans FB", 36)
+            }
+            minWidth = 200
           },
           new Text {
             text = score.toString
@@ -139,7 +143,7 @@ class GameScreen(me: Me, players: Seq[Other]) {
         )
       }
 
-      if(us < them) {
+      if (us < them) {
         content = Seq(
           getScore("Them", them),
           getScore("Us", us)
@@ -183,6 +187,7 @@ class GameScreen(me: Me, players: Seq[Other]) {
     root = new BorderPane {
 
       left = new VBox {
+        maxWidth = Double.MaxValue
         padding = Insets(25)
         spacing = 5
         content = playerElements.values
@@ -295,6 +300,7 @@ class GameScreen(me: Me, players: Seq[Other]) {
 
     lazy val lastPlayedElements = new FlowPane {
       spacing = 2
+      maxWidth = Double.MaxValue
       content = player.lastPlayed.map(p => cardElement(p))
     }
 

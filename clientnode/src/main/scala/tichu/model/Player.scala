@@ -14,6 +14,8 @@ abstract class Player {
   
   def tellOrder(left: String, partner: String, right: String): Unit = node ! Seating(name, left, partner, right)
 
+  def tellMahjong(myName: String) = node ! HasMahJong(name, myName)
+
   def dealHand(hand: Seq[Card]): Unit = node ! Hand(name, hand)
 
   def numberOfCards(): Int
@@ -55,8 +57,6 @@ class Other(val name: String, val node: ActorRef) extends Player() {
     cards -= combination.length
     assert(cards >= 0)
   }
-
-  def tellMahjong(myName: String) = node ! HasMahJong(name, myName)
 
   def giveToken(token: Token) = node ! GiveToken(name, token)
 

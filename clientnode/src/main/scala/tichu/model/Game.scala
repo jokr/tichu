@@ -11,18 +11,18 @@ class Game(myName: String, playerRefs: Seq[(String, ActorRef)], leader: (String,
 
   private val players = Map[String, Other](playerRefs.filterNot(p => p._1.equals(myName)) map { p => p._1 -> new Other(p._1, p._2) }: _*)
 
-  implicit val me: Me = new Me(myName, self)
+  private val me: Me = new Me(myName, self)
 
-  implicit val other: Seq[Other] = players.values.toSeq
+  private val other: Seq[Other] = players.values.toSeq
 
-  implicit val all: Seq[Player] = other :+ me
+  private val all: Seq[Player] = other :+ me
 
   private var token: Option[Token] = None
 
   private var scoreUs = 0
   private var scoreThem = 0
 
-  def preSetup: Receive = {
+  def setup: Receive = {
     case Start() =>
       log.info("Seat the players.")
 
@@ -31,7 +31,7 @@ class Game(myName: String, playerRefs: Seq[(String, ActorRef)], leader: (String,
       val left = randomizedOrder(1)
       val right = randomizedOrder(2)
 
-      me.tellOrder(partner, left, right)
+      me.tellOrder(left, partner, right)
       players(left).tellOrder(partner, right, myName)
       players(partner).tellOrder(right, myName, left)
       players(right).tellOrder(myName, left, partner)
@@ -40,29 +40,31 @@ class Game(myName: String, playerRefs: Seq[(String, ActorRef)], leader: (String,
       log.info("My team mate is {}.", partner)
       log.info("The player to the left is {}.", right)
       players(partner).teamMate = true
-      context.become(setup(players(left), players(partner), players(right)), discardOld = true)
+      context.become(start(players(left), players(partner), players(right)), discardOld = true)
       if (amILeader) {
         distributeCards()
       }
   }
 
-  def setup(left: Other, partner: Other, right: Other): Receive = {
+  def start(left: Other, partner: Other, right: Other): Receive = {
     case Hand(`myName`, hand) =>
       me.hand = hand
-      context.system.eventStream.publish(GameReady(me, other))
+      context.system.eventStream.publish(GameReady(me, Seq(left, partner, right)))
+      log.info("Received my hand.")
 
       if (hand.contains(MahJong())) {
         log.info("I have the Mah Jong!")
         other.foreach(p => p.tellMahjong(myName))
         context.system.eventStream.publish(ActivePlayer(me))
         context.become(game(left, partner, right) orElse common, discardOld = true)
+        if (amILeader) {
+          log.info("Give myself the token.")
+          token = Some(new Token())
+        }
       } else {
         log.info("Wait for somebody to have the Mah Jong.")
-        context.become(exchange(left, partner, right) orElse common, discardOld = true)
       }
-  }
 
-  def exchange(left: Other, partner: Other, right: Other): Receive = {
     case HasMahJong(`myName`, name) =>
       log.info("{} has the Mah Jong.", name)
       val startPlayer = players(name)
@@ -96,25 +98,28 @@ class Game(myName: String, playerRefs: Seq[(String, ActorRef)], leader: (String,
 
     case MoveToken(combination) =>
       assert(token.isDefined)
-      if (combination.nonEmpty) {
-        log.info("I made a play: {}.", combination)
-      } else {
-        log.info("I passed.")
-      }
+      log.info("I made a play: {}.", combination)
 
       me.play(combination)
-
-      if (me.numberOfCards() == 0) {
-        leader._2 ! Done(leader._1, myName)
-      }
 
       token.get.push(combination)
 
       context.system.eventStream.publish(UpdatePlayer(me))
       other.foreach(p => p.broadcastPlay(myName, combination))
 
-      context.system.eventStream.publish(ActivePlayer(left))
-      left.giveToken(token.get)
+      if (me.numberOfCards() == 0) {
+        leader._2 ! Done(leader._1, myName)
+      }
+
+      if (isOver) {
+        log.info("Round is over.")
+        me.winTrick(token.get.clear())
+      } else {
+        val next = Game.nextPlayer(Seq(me, left, partner, right), me)
+        log.info("It is now the turn of {}.", next.get.name)
+        context.system.eventStream.publish(ActivePlayer(next.get))
+        left.giveToken(token.get)
+      }
       token = None
 
     case MakePlay(`myName`, name, combination) =>
@@ -123,16 +128,13 @@ class Game(myName: String, playerRefs: Seq[(String, ActorRef)], leader: (String,
       player.play(combination)
       context.system.eventStream.publish(UpdatePlayer(player))
 
-      if (isOver) {
-        log.info("Round is over.")
+      val next = Game.nextPlayer(Seq(me, left, partner, right), player)
+
+      if (next.isDefined) {
+        log.info("It is now the turn of {}.", next.get.name)
+        context.system.eventStream.publish(ActivePlayer(next.get))
       } else {
-        val nextPlayer = player match {
-          case `left` => partner
-          case `partner` => right
-          case `right` => me
-        }
-        log.info("It is now the turn of {}.", nextPlayer.name)
-        context.system.eventStream.publish(ActivePlayer(nextPlayer))
+        log.info("Round is over.")
       }
 
     case AllClear(`myName`) =>
@@ -143,7 +145,8 @@ class Game(myName: String, playerRefs: Seq[(String, ActorRef)], leader: (String,
 
     case Done(`myName`, name) =>
       assert(amILeader)
-      val player = players(name)
+      log.info("{} is done.", name)
+      val player = all.find(p => p.name.equals(name)).get
       player.rank = all.count(p => p.numberOfCards() == 0)
 
       val winners = winningTeam()
@@ -163,15 +166,17 @@ class Game(myName: String, playerRefs: Seq[(String, ActorRef)], leader: (String,
           assert(all.count(p => p.numberOfCards() == 0) == 3)
           log.info("Request tricks.")
           other.foreach(p => p.requestTricks())
-          context.become(scoring(left, partner, right, 0) orElse common, discardOld = true)
+          context.become(scoring(left, partner, right, 0) orElse game(left, partner, right) orElse common, discardOld = true)
         }
       }
 
     case RequestTricks(`myName`) => leader._2 ! Tricks(leader._1, myName, me.tricks, me.hand)
 
     case Score(`myName`, us, them) =>
+      log.info("Receive new points for us ({}) and them ({}).", us, them)
       scoreUs += us
       scoreThem += them
+      log.info("New scores for us ({}) and them ({}).", scoreUs, scoreThem)
       context.system.eventStream.publish(UpdateScore(scoreUs, scoreThem))
       if (scoreUs > 1000 && scoreUs > scoreThem) {
         log.info("We won!")
@@ -181,7 +186,10 @@ class Game(myName: String, playerRefs: Seq[(String, ActorRef)], leader: (String,
         context.system.eventStream.publish(GameOver(won = false))
       } else {
         log.info("Next round.")
-        context.become(setup(left, partner, right) orElse common, discardOld = true)
+        context.become(start(left, partner, right) orElse common, discardOld = true)
+        if (amILeader) {
+          distributeCards()
+        }
       }
   }
 
@@ -215,24 +223,6 @@ class Game(myName: String, playerRefs: Seq[(String, ActorRef)], leader: (String,
       } else {
         context.become(scoring(left, partner, right, received + 1) orElse common, discardOld = true)
       }
-
-    case Score(`myName`, us, them) =>
-      scoreUs += us
-      scoreThem += them
-      context.system.eventStream.publish(UpdateScore(scoreUs, scoreThem))
-      if (scoreUs > 1000 && scoreUs > scoreThem) {
-        log.info("We won!")
-        context.system.eventStream.publish(GameOver(won = true))
-      } else if (scoreThem > 1000 && scoreThem > scoreUs) {
-        log.info("We lost!")
-        context.system.eventStream.publish(GameOver(won = false))
-      } else {
-        log.info("Next round.")
-        context.become(setup(left, partner, right) orElse common, discardOld = true)
-        if (amILeader) {
-          distributeCards()
-        }
-      }
   }
 
   def common: Receive = {
@@ -241,12 +231,12 @@ class Game(myName: String, playerRefs: Seq[(String, ActorRef)], leader: (String,
 
   def points(xs: Seq[Card]): Int = xs.map(_.points).sum
 
-  def distributeCards()(implicit allPlayers: Seq[Player]) = {
+  def distributeCards() = {
     log.info("Deal hands.")
     val hands = new Deck().shuffle.deal()
     assert(hands.forall(p => p.length == 14))
-    for (i <- allPlayers.indices) {
-      allPlayers(i).dealHand(hands(i))
+    for (i <- all.indices) {
+      all(i).dealHand(hands(i))
     }
   }
 
@@ -261,5 +251,17 @@ class Game(myName: String, playerRefs: Seq[(String, ActorRef)], leader: (String,
 
   def isOver: Boolean = winningTeam().isDefined
 
-  override def receive: Receive = preSetup orElse common
+  override def receive: Receive = setup orElse common
+}
+
+object Game {
+  def nextPlayer(order: Seq[Player], current: Player): Option[Player] = {
+    val index = order.indexOf(current)
+    for (i <- 1 to 3) {
+      if (order((index + i) % 4).numberOfCards() > 0) {
+        return Some(order((index + i) % 4))
+      }
+    }
+    None
+  }
 }
