@@ -1,7 +1,7 @@
 package tichu.model
 
 import akka.actor.ActorRef
-import tichu.supernode.Hand
+import tichu.supernode._
 
 abstract class Player {
   var rank = 0
@@ -11,22 +11,28 @@ abstract class Player {
   var tricks = Seq[Card]()
 
   def node: ActorRef
+  
+  def tellOrder(left: String, partner: String, right: String): Unit = node ! Seating(name, left, partner, right)
 
-  def dealHand(hand: Seq[Card])
+  def tellMahjong(myName: String) = node ! HasMahJong(name, myName)
+
+  def dealHand(hand: Seq[Card]): Unit = node ! Hand(name, hand)
 
   def numberOfCards(): Int
 
-  def userName: String
+  def name: String
+
+  def teamMate: Boolean
 
   def play(combination: Seq[Card]): Unit
 }
 
-class Me(val userName: String, val teamMate: Other, val node: ActorRef) extends Player() {
+class Me(val name: String, val node: ActorRef) extends Player() {
   var hand = Seq[Card]()
 
   override def numberOfCards(): Int = hand.length
 
-  override def dealHand(hand: Seq[Card]): Unit = node ! Hand(userName, hand)
+  override def teamMate = false
 
   override def play(combination: Seq[Card]): Unit = {
     hand = hand.filterNot(p => combination.contains(p))
@@ -39,16 +45,24 @@ class Me(val userName: String, val teamMate: Other, val node: ActorRef) extends 
   }
 }
 
-class Other(val userName: String, val node: ActorRef) extends Player() {
+class Other(val name: String, val node: ActorRef) extends Player() {
   var cards = 14
 
-  override def numberOfCards(): Int = cards
+  var teamMate = false
 
-  override def dealHand(hand: Seq[Card]): Unit = node ! Hand(userName, hand)
+  override def numberOfCards(): Int = cards
 
   override def play(combination: Seq[Card]): Unit = {
     lastPlayed = combination
     cards -= combination.length
     assert(cards >= 0)
   }
+
+  def giveToken(token: Token) = node ! GiveToken(name, token)
+
+  def clearTable() = node ! AllClear(name)
+
+  def broadcastPlay(myName: String, combination: Seq[Card]) = node ! MakePlay(name, myName, combination)
+
+  def requestTricks() = node ! RequestTricks(name)
 }
