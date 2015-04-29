@@ -14,11 +14,11 @@ import scalafx.scene.input.MouseEvent
 import scalafx.scene.layout._
 import scalafx.scene.paint.Color
 import scalafx.scene.shape.Rectangle
-import scalafx.scene.text.{Font, FontWeight, Text, TextAlignment}
+import scalafx.scene.text.{Font, FontWeight, Text}
 import scalafx.scene.{Group, Scene}
 
 class GameScreen(me: Me, players: Seq[Other]) {
-  var playerElements = Map(players map { p => p.userName -> playerElement(p) }: _*) + (me.userName -> playerElement(me))
+  var playerElements = Map(players.indices map { i => players(i).name -> playerElement(players(i)) }: _*) + (me.name -> playerElement(me))
 
   val meElement = new HBox {
     val selectedCards = mutable.Set[Card]()
@@ -110,23 +110,74 @@ class GameScreen(me: Me, players: Seq[Other]) {
     )
   }
 
+  val scoreElement = new StackPane {
+    def setScore(us: Int, them: Int) = {
+      content = Seq(
+        new Region {
+          style = "-fx-background-color: beige"
+          effect = new InnerShadow {
+            color = Color.BLACK
+            choke = 0.5
+          }
+        },
+        getScoreElement(0, 0)
+      )
+    }
+
+    def getScoreElement(us: Int, them: Int) = new VBox {
+      def getScore(teamName: String, score: Int) = new HBox {
+        spacing = 40
+        content = Seq(
+          new Text {
+            text = teamName
+            font = new Font("Berlin Sans FB", 36)
+          },
+          new Text {
+            text = score.toString
+            font = new Font("Berlin Sans FB", 36)
+          }
+        )
+      }
+
+      if(us < them) {
+        content = Seq(
+          getScore("Them", them),
+          getScore("Us", us)
+        )
+      } else {
+        content = Seq(
+          getScore("Us", them),
+          getScore("Them", us)
+        )
+      }
+
+      padding = Insets(25)
+      spacing = 5
+      minWidth = 300
+    }
+
+    padding = Insets(25)
+    maxHeight = 200
+    setScore(0, 0)
+  }
+
   def activePlayer(player: Player): Unit = {
     playerElements.values.foreach(p => p.inactive())
-    val playerElement = playerElements.get(player.userName)
+    val playerElement = playerElements.get(player.name)
     if (playerElement.isDefined) {
       playerElement.get.active()
     }
-    if (me.userName.equals(player.userName)) meElement.active()
+    if (me.name.equals(player.name)) meElement.active()
   }
 
   def updatePlayer(player: Player) = {
-    val playerElement = playerElements.get(player.userName)
+    val playerElement = playerElements.get(player.name)
     if (playerElement.isDefined) {
       playerElement.get.updateLastPlayed(player.numberOfCards(), player.lastPlayed)
     }
   }
 
-  def updateScore(myTeam: Int, opponents: Int) = ???
+  def updateScore(us: Int, them: Int) = scoreElement.setScore(us, them)
 
   lazy val screen = new Scene {
     root = new BorderPane {
@@ -137,53 +188,7 @@ class GameScreen(me: Me, players: Seq[Other]) {
         content = playerElements.values
       }
 
-      right = new StackPane {
-        padding = Insets(25)
-        maxHeight = 200
-        content = Seq(
-          new Region {
-            style = "-fx-background-color: beige"
-            effect = new InnerShadow {
-              color = Color.BLACK
-              choke = 0.5
-            }
-          },
-          new VBox {
-            padding = Insets(25)
-            spacing = 5
-            minWidth = 300
-            content = Seq(
-              new HBox {
-                spacing = 40
-                content = Seq(
-                  new Text {
-                    text = "Team A"
-                    font = new Font("Berlin Sans FB", 36)
-                  },
-                  new Text {
-                    text = "100"
-                    font = new Font("Berlin Sans FB", 36)
-                  }
-                )
-              },
-              new HBox {
-                spacing = 40
-                content = Seq(
-                  new Text {
-                    text = "Team B"
-                    font = new Font("Berlin Sans FB", 36)
-                  },
-                  new Text {
-                    text = "300"
-                    font = new Font("Berlin Sans FB", 36)
-                    textAlignment = TextAlignment.RIGHT
-                  }
-                )
-              }
-            )
-          }
-        )
-      }
+      right = scoreElement
 
       bottom = meElement
     }
@@ -252,7 +257,7 @@ class GameScreen(me: Me, players: Seq[Other]) {
 
   def playerElement(player: Player) = new HBox() {
     def getColor = {
-      if (me.teamMate.equals(player)) Color.GREEN
+      if (player.teamMate) Color.GREEN
       else if (me.equals(player)) Color.GREEN
       else Color.RED
     }
@@ -281,7 +286,7 @@ class GameScreen(me: Me, players: Seq[Other]) {
     }
 
     lazy val name = new Text {
-      text = player.userName
+      text = player.name
       font = Font.font("Calibri", 26)
       strokeWidth = 10
       alignment = Pos.CENTER

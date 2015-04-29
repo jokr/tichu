@@ -55,6 +55,8 @@ package object clientnode {
 
   case class GameReady(me: Me, others: Seq[Other]) extends GUIEvent
 
+  case class Start()
+
   case class ActivePlayer(player: Player) extends GUIEvent
 
   case class UpdatePlayer(player: Player) extends GUIEvent
