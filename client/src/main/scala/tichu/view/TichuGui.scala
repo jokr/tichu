@@ -27,6 +27,7 @@ class TichuGui(controller: ActorRef) extends Actor with ActorLogging {
   def game(screen: GameScreen): Receive = {
     case ActivePlayer(startPlayer) => screen.activePlayer(startPlayer)
     case UpdatePlayer(player) => screen.updatePlayer(player)
+    case UpdateScore(us, them) => screen.updateScore(us, them)
   }
 
   def common: Receive = {

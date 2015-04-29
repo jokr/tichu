@@ -30,7 +30,7 @@ package object supernode {
 
   final case class AvailablePlayers(players: Seq[(String, ActorRef)])
 
-  final case class Partner(userName: String, partner: String, left: String, right: String) extends Forwardable
+  final case class Seating(userName: String, left: String, partner: String, right: String) extends Forwardable
 
   final case class Hand(userName: String, hand: Seq[Card]) extends Forwardable
 
@@ -46,7 +46,7 @@ package object supernode {
 
   final case class RequestTricks(userName: String) extends Forwardable
 
-  final case class Tricks(userName: String, player: String, tricks: Seq[Card], hand: Seq[Card])
+  final case class Tricks(userName: String, player: String, tricks: Seq[Card], hand: Seq[Card]) extends Forwardable
 
-  final case class Score(userName: String, us: Int, them: Int)
+  final case class Score(userName: String, us: Int, them: Int) extends Forwardable
 }
